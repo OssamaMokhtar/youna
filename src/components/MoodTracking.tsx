@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Calendar, TrendingUp, Clock, Check } from "lucide-react";
+import { Calendar, TrendingUp, Clock, Check, Sparkles, AlertTriangle } from "lucide-react";
+import CrisisResources from "./CrisisResources";
 
-interface MoodEntry {
+// ── Types ──────────────────────────────────────────────────────
+
+export interface MoodEntry {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   mood: "happy" | "calm" | "sad" | "anxious" | "neutral";
   note?: string;
   createdAt: string;
 }
+
+// ── Constants ───────────────────────────────────────────────────
 
 const MOOD_EMOJI: Record<MoodEntry["mood"], string> = {
   happy: "😊",
@@ -28,6 +33,8 @@ const MOOD_COLOR: Record<MoodEntry["mood"], string> = {
 };
 
 const STORAGE_KEY = "youna_mood_entries";
+
+// ── Storage ────────────────────────────────────────────────────
 
 function loadEntries(): MoodEntry[] {
   if (typeof window === "undefined") return [];
@@ -48,11 +55,7 @@ function getToday(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-function getWeekAgo(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return d.toISOString().split("T")[0];
-}
+// ── Component ──────────────────────────────────────────────────
 
 export default function MoodTracking() {
   const [entries, setEntries] = useState<MoodEntry[]>([]);
@@ -62,12 +65,14 @@ export default function MoodTracking() {
   const [showChart, setShowChart] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [todayEntry, setTodayEntry] = useState<MoodEntry | null>(null);
+  const [showCrisisDialog, setShowCrisisDialog] = useState(false);
+  const [lastTriggeredDate, setLastTriggeredDate] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadEntries();
     setEntries(loaded);
     const today = getToday();
-    const existing = loaded.find(e => e.date === today);
+    const existing = loaded.find((e) => e.date === today);
     if (existing) setTodayEntry(existing);
   }, []);
 
@@ -76,10 +81,12 @@ export default function MoodTracking() {
   }, [entries]);
 
   const today = getToday();
-  const weekAgo = getWeekAgo();
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekAgoStr = weekAgo.toISOString().split("T")[0];
 
   const weekEntries = entries
-    .filter(e => e.date >= weekAgo && e.date <= today)
+    .filter((e) => e.date >= weekAgoStr && e.date <= today)
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const moodScore = (mood: MoodEntry["mood"]): number => {
@@ -95,6 +102,19 @@ export default function MoodTracking() {
 
   const handleSubmit = useCallback(() => {
     if (!selectedMood) return;
+
+    const recentEntries = entries.filter((e) => e.date >= weekAgoStr);
+    const avgMood =
+      recentEntries.length > 0
+        ? recentEntries.reduce((sum, e) => sum + moodScore(e.mood), 0) /
+          recentEntries.length
+        : 0;
+
+    if (avgMood <= 1.5 && moodScore(selectedMood) <= 2 && lastTriggeredDate !== today) {
+      setShowCrisisDialog(true);
+      setLastTriggeredDate(today);
+    }
+
     const newEntry: MoodEntry = {
       id: Date.now().toString() + Math.random().toString(36).slice(2),
       date: today,
@@ -102,8 +122,8 @@ export default function MoodTracking() {
       note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
-    setEntries(prev => {
-      const filtered = prev.filter(e => e.date !== today);
+    setEntries((prev) => {
+      const filtered = prev.filter((e) => e.date !== today);
       return [...filtered, newEntry].sort((a, b) => a.date.localeCompare(b.date));
     });
     setTodayEntry(newEntry);
@@ -113,20 +133,24 @@ export default function MoodTracking() {
       setShowForm(false);
       setSelectedMood("");
       setNote("");
+      setShowCrisisDialog(false);
     }, 1200);
-  }, [selectedMood, note, today, entries]);
+  }, [selectedMood, note, today, entries, lastTriggeredDate]);
 
-  const moodAvg = weekEntries.length > 0
-    ? weekEntries.reduce((sum, e) => sum + moodScore(e.mood), 0) / weekEntries.length
-    : 0;
+  const moodAvg =
+    weekEntries.length > 0
+      ? weekEntries.reduce((sum, e) => sum + moodScore(e.mood), 0) / weekEntries.length
+      : 0;
 
-  const moodTrend = weekEntries.length >= 2
-    ? weekEntries[weekEntries.length - 1].mood === weekEntries[0].mood
-      ? "stable"
-      : moodScore(weekEntries[weekEntries.length - 1].mood) > moodScore(weekEntries[0].mood)
-      ? "up"
-      : "down"
-    : "stable";
+  const moodTrend =
+    weekEntries.length >= 2
+      ? weekEntries[0].mood === weekEntries[weekEntries.length - 1].mood
+        ? "stable"
+        : moodScore(weekEntries[weekEntries.length - 1].mood) >
+          moodScore(weekEntries[0].mood)
+        ? "up"
+        : "down"
+      : "stable";
 
   const trendLabel = {
     up: "Improving",
@@ -177,7 +201,7 @@ export default function MoodTracking() {
                   How are you feeling right now?
                 </label>
                 <div className="grid grid-cols-5 gap-2">
-                  {(["happy", "calm", "neutral", "sad", "anxious"] as const).map(mood => (
+                  {(["happy", "calm", "neutral", "sad", "anxious"] as const).map((mood) => (
                     <button
                       key={mood}
                       onClick={() => setSelectedMood(selectedMood === mood ? "" : mood)}
@@ -202,7 +226,7 @@ export default function MoodTracking() {
                 </label>
                 <textarea
                   value={note}
-                  onChange={e => setNote(e.target.value)}
+                  onChange={(e) => setNote(e.target.value)}
                   placeholder="Anything you want to capture about today..."
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none h-24 transition-all"
                 />
@@ -226,7 +250,9 @@ export default function MoodTracking() {
             </div>
           ) : todayEntry ? (
             <div className="text-center py-2 animate-fade-in">
-              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${MOOD_COLOR[todayEntry.mood]} mb-3 shadow-md`}>
+              <div
+                className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${MOOD_COLOR[todayEntry.mood]} mb-3 shadow-md`}
+              >
                 <span className="text-3xl">{MOOD_EMOJI[todayEntry.mood]}</span>
               </div>
               <p className="text-lg font-semibold text-gray-900 capitalize">{todayEntry.mood}</p>
@@ -284,7 +310,7 @@ export default function MoodTracking() {
               </div>
             ) : (
               <div className="space-y-2">
-                {weekEntries.map((entry, idx) => {
+                {weekEntries.map((entry) => {
                   const score = moodScore(entry.mood);
                   const maxScore = 5;
                   const barHeight = (score / maxScore) * 100;
@@ -331,7 +357,6 @@ export default function MoodTracking() {
               </div>
             )}
 
-            {/* Summary */}
             {weekEntries.length > 0 && (
               <div className="mt-6 pt-4 border-t border-gray-100">
                 <div className="flex items-center justify-between text-sm">
@@ -340,8 +365,8 @@ export default function MoodTracking() {
                     <span>Average mood:</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {moodAvg >= 4 ? "Good" : moodAvg >= 3 ? "Okay" : " needs attention"}
-                    {" "}({moodAvg.toFixed(1)}/5.0)
+                    {moodAvg >= 4 ? "Good" : moodAvg >= 3 ? "Okay" : "Needs attention"}{" "}
+                    ({moodAvg.toFixed(1)}/5.0)
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-2">
@@ -349,12 +374,36 @@ export default function MoodTracking() {
                     <TrendingUp size={14} />
                     <span>Trend:</span>
                   </div>
-                  <span className={`font-semibold ${
-                    moodTrend === "up" ? "text-green-600" : moodTrend === "down" ? "text-amber-600" : "text-gray-600"
-                  }`}>
+                  <span
+                    className={`font-semibold ${
+                      moodTrend === "up"
+                        ? "text-green-600"
+                        : moodTrend === "down"
+                        ? "text-amber-600"
+                        : "text-gray-600"
+                    }`}
+                  >
                     {trendLabel}
                   </span>
                 </div>
+
+                {moodAvg <= 2 && weekEntries.length >= 3 && (
+                  <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-800">
+                        We've noticed your mood has been low this week. You don't have to carry this
+                        alone.{" "}
+                        <button
+                          onClick={() => setShowCrisisDialog(true)}
+                          className="font-medium underline hover:text-amber-900"
+                        >
+                          Explore support resources
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -373,12 +422,14 @@ export default function MoodTracking() {
               {entries
                 .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
                 .slice(0, 14)
-                .map(entry => (
+                .map((entry) => (
                   <div
                     key={entry.id}
                     className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 animate-fade-in"
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${MOOD_COLOR[entry.mood]} shadow-sm`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${MOOD_COLOR[entry.mood]} shadow-sm`}
+                    >
                       <span className="text-lg">{MOOD_EMOJI[entry.mood]}</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -401,6 +452,8 @@ export default function MoodTracking() {
           )}
         </div>
       </div>
+
+      {showCrisisDialog && <CrisisResources onClose={() => setShowCrisisDialog(false)} reason="mood_tracking" />}
     </div>
   );
 }

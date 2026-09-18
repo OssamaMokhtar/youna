@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Calendar, TrendingUp, Clock, Check, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, TrendingUp, Clock, Check, Sparkles, AlertTriangle, Phone, Shield } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -78,36 +78,66 @@ export default function Journaling() {
   const [submitted, setSubmitted] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showReflection, setShowReflection] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     const loaded = loadEntries();
     setEntries(loaded);
+    // Calculate streak
+    let count = 0;
+    const d = new Date();
+    while (true) {
+      const date = d.toISOString().split("T")[0];
+      if (loaded.some((e) => e.date === date)) {
+        count++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    setStreak(count);
   }, []);
 
   useEffect(() => {
     saveEntries(entries);
+    // Recalculate streak when entries change
+    let count = 0;
+    const d = new Date();
+    while (true) {
+      const date = d.toISOString().split("T")[0];
+      if (entries.some((e) => e.date === date)) {
+        count++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    setStreak(count);
   }, [entries]);
 
   const today = getToday();
-  const todayEntry = entries.find(e => e.date === today);
-  const recent = [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  const todayEntry = entries.find((e) => e.date === today);
+  const recent = [...entries].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
+  );
 
-  const pickRandomPrompt = useCallback(() => {
-    const prompt = JOURNAL_PROMPTS[Math.floor(Math.random() * JOURNAL_PROMPTS.length)];
+  const pickRandomPrompt = () => {
+    const prompt =
+      JOURNAL_PROMPTS[Math.floor(Math.random() * JOURNAL_PROMPTS.length)];
     setSelectedPrompt(prompt);
     setContent("");
     setMood("");
-  }, []);
+  };
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = () => {
     if (!content.trim()) return;
     const now = new Date().toISOString();
     if (editingId) {
-      setEntries(prev => prev.map(e =>
-        e.id === editingId
-          ? { ...e, content: content.trim(), updatedAt: now }
-          : e
-      ));
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === editingId ? { ...e, content: content.trim(), updatedAt: now } : e
+        )
+      );
     } else {
       const newEntry: JournalEntry = {
         id: Date.now().toString() + Math.random().toString(36).slice(2),
@@ -118,9 +148,11 @@ export default function Journaling() {
         createdAt: now,
         updatedAt: now,
       };
-      setEntries(prev => {
-        const filtered = prev.filter(e => e.date !== today || e.id !== editingId);
-        return [...filtered, newEntry].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+      setEntries((prev) => {
+        const filtered = prev.filter((e) => e.date !== today || e.id !== editingId);
+        return [...filtered, newEntry].sort(
+          (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
+        );
       });
     }
     setSubmitted(true);
@@ -133,7 +165,7 @@ export default function Journaling() {
       setEditingId(null);
       setShowReflection(true);
     }, 800);
-  }, [content, selectedPrompt, mood, today, editingId, entries]);
+  };
 
   const startEdit = (entry: JournalEntry) => {
     setEditingId(entry.id);
@@ -145,7 +177,7 @@ export default function Journaling() {
 
   const deleteEntry = (id: string) => {
     if (!confirm("Delete this entry?")) return;
-    setEntries(prev => prev.filter(e => e.id !== id));
+    setEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
   const moodEmoji: Record<NonNullable<JournalEntry["mood"]>, string> = {
@@ -157,20 +189,6 @@ export default function Journaling() {
   };
 
   const totalEntries = entries.length;
-  const streak = (() => {
-    let count = 0;
-    const d = new Date();
-    while (true) {
-      const date = d.toISOString().split("T")[0];
-      if (entries.some(e => e.date === date)) {
-        count++;
-        d.setDate(d.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return count;
-  })();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -198,7 +216,7 @@ export default function Journaling() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        {/* Today's entry */}
+        {/* Today's entry + write button */}
         <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-indigo-600 text-sm font-medium">
@@ -231,7 +249,9 @@ export default function Journaling() {
             <div className="space-y-4 animate-fade-in">
               {selectedPrompt && (
                 <div className="bg-indigo-50 rounded-xl p-4">
-                  <p className="text-sm text-indigo-700 leading-relaxed">{selectedPrompt}</p>
+                  <p className="text-sm text-indigo-700 leading-relaxed">
+                    {selectedPrompt}
+                  </p>
                   <button
                     onClick={pickRandomPrompt}
                     className="mt-2 text-xs text-indigo-500 hover:text-indigo-700"
@@ -247,7 +267,7 @@ export default function Journaling() {
                 </label>
                 <textarea
                   value={content}
-                  onChange={e => setContent(e.target.value)}
+                  onChange={(e) => setContent(e.target.value)}
                   placeholder="Write freely — no right or wrong way..."
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none h-40 transition-all"
                 />
@@ -258,7 +278,9 @@ export default function Journaling() {
                   <span>How are you feeling?</span>
                   <select
                     value={mood}
-                    onChange={e => setMood(e.target.value as JournalEntry["mood"] | "")}
+                    onChange={(e) =>
+                      setMood(e.target.value as JournalEntry["mood"] | "")
+                    }
                     className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select mood...</option>
@@ -283,7 +305,11 @@ export default function Journaling() {
                   disabled={!content.trim()}
                   className="flex-1 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  {submitted ? "Saved!" : editingId ? "Update Entry" : "Save Entry"}
+                  {submitted
+                    ? "Saved!"
+                    : editingId
+                    ? "Update Entry"
+                    : "Save Entry"}
                 </button>
               </div>
             </div>
@@ -295,14 +321,23 @@ export default function Journaling() {
                 <div className="text-left space-y-3">
                   {todayEntry.prompt && (
                     <div className="bg-indigo-50 rounded-xl p-3">
-                      <p className="text-xs text-indigo-600 font-medium mb-1">Today's prompt</p>
-                      <p className="text-sm text-indigo-800 italic">{todayEntry.prompt}</p>
+                      <p className="text-xs text-indigo-600 font-medium mb-1">
+                        Today's prompt
+                      </p>
+                      <p className="text-sm text-indigo-800 italic">
+                        {todayEntry.prompt}
+                      </p>
                     </div>
                   )}
-                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{todayEntry.content}</p>
+                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    {todayEntry.content}
+                  </p>
                   {todayEntry.mood && (
                     <div className="text-sm text-gray-500">
-                      Feeling: <span className="font-medium">{moodEmoji[todayEntry.mood]} {todayEntry.mood}</span>
+                      Feeling:{" "}
+                      <span className="font-medium">
+                        {moodEmoji[todayEntry.mood]} {todayEntry.mood}
+                      </span>
                     </div>
                   )}
                   <div className="flex gap-2 pt-2">
@@ -322,7 +357,9 @@ export default function Journaling() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-gray-500 text-sm">You haven't written today yet.</p>
+                  <p className="text-gray-500 text-sm">
+                    You haven't written today yet.
+                  </p>
                   <button
                     onClick={() => {
                       setShowForm(true);
@@ -364,7 +401,7 @@ export default function Journaling() {
             </div>
           ) : (
             <div className="space-y-2">
-              {recent.map(entry => (
+              {recent.map((entry) => (
                 <div
                   key={entry.id}
                   className="flex items-start gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100 animate-fade-in"
@@ -396,8 +433,18 @@ export default function Journaling() {
                     className="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors flex-shrink-0"
                     title="Edit"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
                     </svg>
                   </button>
                 </div>
