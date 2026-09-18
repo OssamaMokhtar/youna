@@ -2,9 +2,9 @@
 
 **Youna — AI Therapist, Wellness Coach & Companion Platform**
 
-Youna is an AI-native emotional wellness platform. It learns your personality, tracks your mood, guides your journaling, and stays with you through daily check-ins — all wrapped in a safety-first architecture that never positions itself as a replacement for professional care.
+Youna is an AI-native emotional wellness platform. It learns your personality, tracks your mood, guides your journaling, listens to your voice, and stays with you through daily check-ins — all wrapped in a safety-first architecture that never positions itself as a replacement for professional care.
 
-**Phase Two is live** (Next.js 15, TypeScript, Tailwind CSS). Phase One established the foundation; Phase Two delivers persistent mood tracking, journaling, voice conversations, and 6-framework personality insights.
+**Phase Two is complete and live** (9 commits, 13 routes, clean build on Node 22 LTS). Phase One established the foundation; Phase Two delivers mood tracking, journaling, voice conversations, 6-framework personality insights, safety layer hardening, and daily check-in streaks.
 
 ## What Youna Is
 
@@ -14,21 +14,22 @@ A personal AI companion for emotional wellness — available 24/7, deeply person
 
 A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion — and it says so, clearly and persistently, in every interaction.
 
-## Routes
+## Routes (13 total)
 
 | Route | Purpose |
 |-------|---------|
 | `/` | Landing page — hero, features, how-it-works, safety, CTA |
-| `/chat` | Full chat interface with Youna — text conversations, mood-aware AI, quick actions, mood check-in modal, journal prompt modal |
+| `/chat` | Full chat interface with Youna — text + voice, mood-aware AI, crisis detection, quick actions, modals |
 | `/assessment` | Personality assessment onboarding — Big Five, attachment style, goals → personality profile |
 | `/features` | Feature overview cards |
 | `/about` | Mission, story, values, what Youna is / is not |
-| `/mood` | **Mood Tracking** — daily mood logging, 7-day trend chart, weekly summary, full history |
-| `/journal` | **Journaling** — free-form entries, AI-guided prompts (15), mood tagging, AI reflection on save, streak tracking, edit/delete |
-| `/voice` | **Voice Chat** — Web Speech API voice input (mic) + speech synthesis output (Youna speaks back), listening indicator |
-| `/insights` | **Personality Insights** — 6-framework personality DNA: Big Five, Attachment Theory, HEXACO, Enneagram, DISC, Love Languages |
+| `/mood` | **Mood Tracking** — daily mood logging, 7-day trend chart, weekly summary, history, streak |
+| `/journal` | **Journaling** — free-form entries, 15 AI-guided prompts, mood tagging, AI reflection, streak |
+| `/voice` | **Voice Chat** — Web Speech API mic input + speech synthesis output, listening indicator |
+| `/insights` | **Personality Insights** — 6-framework DNA: Big Five, Attachment, HEXACO, Enneagram, DISC, Love Languages |
+| `/checkin` | **Daily Check-in** — mood/energy/stress, reflection prompts, streak tracking, crisis detection |
 
-## Phase One Features (MVP)
+## Phase One Features (MVP — complete)
 
 1. **AI Chat Companion** — mock AI with emotional tone detection (stressed / sad / anxious / happy / neutral), typing indicator, mood emoji in messages, quick conversation starters
 2. **Personality DNA Engine** — Big Five assessment (5 questions across O/C/E/A/N), attachment style selector (Secure, Anxious, Avoidant, Fearful-Avoidant), goals input, personality profile output with progress tracking
@@ -40,7 +41,7 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 8. **Safety Layer** — crisis messaging in chat (suicide, self-harm, harm to others), persistent "not a therapist" disclaimers on every route, real crisis resources modal
 9. **Clinical Safety Architecture** — crisis detection keywords, severity-based messaging, resource provision, professional referral pathway (designed; hooks in place)
 
-## Phase Two Features (live)
+## Phase Two Features (complete & live)
 
 ### Mood Tracking (`/mood`)
 - Daily mood logging with 5-emoji selector (😊😌😐😢😰)
@@ -82,8 +83,30 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 - Relationship guidance section
 - 3 suggested next steps cards
 
+### Safety Layer Hardening (`/chat` + `/mood` + `/checkin`)
+- **CrisisResources component** — 2-tier triage (immediate crisis vs. ongoing support), regional helplines, distress warm-up message, professional detour narrative for counseling intent
+- **Crisis detection pipeline** — 16 keyword patterns across sadness, self-harm, hopelessness, and crisis-intent language
+- **Chat**: crisis keyword detection on every user message, professional counseling redirect (no-crisis path), Shield icon button opens resources, persistent crisis banner below header during active crisis context
+- **Mood Tracking**: crisis resources integrated as modal, CrisisLevel awareness (MILD → wellness CTA, SEVERE → blocked dismiss + persistent resource access)
+- **Journaling**: crisis resources integrated as modal, crisis OTA responses in chat when journaling triggers crisis language
+- **Alert threshold**: mood ≤ 1.5 AND entry mood ≤ 2 → crisis dialog in both mood and check-in
+
+### Daily Check-in (`/checkin`)
+- Persistent daily trigger banner (only shows when not yet checked in today)
+- 5-level mood selector with emoji + score mapping
+- Energy slider (0–100%) and Stress slider (0–100%)
+- Free-text note field with persistence
+- Rotating reflection question (7 prompts, rotates on modal open)
+- Stats preview: total check-ins, current streak, avg mood (last 7 days)
+- Success banner after submit (green, shows streak)
+- Streak computed from consecutive check-in dates, persisted to localStorage
+- Streak state: currentStreak, longestStreak, lastCheckedInDate
+- Crisis detection: avg mood over last 7 days ≤ 1.5 AND today's mood score ≤ 2 AND no prior crisis trigger today → opens CrisisResources
+- Crisis banner in modal footer when avgMoodLast7 ≤ 1.5 and ≥ 2 entries
+- Panic button (bell icon) top-right opens CrisisResources with reason="checkin"
+
 ### Shared Types & Scoring (`src/lib/`)
-- `types.ts` — shared type definitions (MoodEntry, JournalEntry, PersonalityProfile, PersonalityDNA, AttachmentStyle, LoveLanguage)
+- `types.ts` — shared type definitions (MoodEntry, JournalEntry, CheckInEntry, PersonalityProfile, PersonalityDNA, AttachmentStyle, LoveLanguage, CrisisLevel)
 - `personality.ts` — HEXACO/DISC/Enneagram/Love Languages scoring helpers (rule-based, deterministic)
 
 ## Phase Three (roadmap)
@@ -112,21 +135,21 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 | Styling | Tailwind CSS |
 | Icons | Lucide React |
 | State | React useState / useEffect / useRef / useCallback (client components) |
-| Storage (MVP) | localStorage for mood + journal persistence |
+| Storage (MVP) | localStorage for mood + journal + check-in persistence |
 | Voice | Web Speech API (webkitSpeechRecognition + SpeechSynthesis) |
-| Build | Static-generated pages, `next build` clean (12/12 routes) |
+| Build | Static-generated pages, `next build` clean (13/13 routes) |
 
 ## Architecture Notes
 
-- **App Router** with route-based layouts — `/`, `/chat`, `/assessment`, `/features`, `/about`, `/mood`, `/journal`, `/voice`, `/insights`
-- **Client components** for all interactive surfaces — `use client` where needed (all Phase Two pages are client components)
-- **Mock AI** continues from Phase One — deterministic responses by detected emotional tone; LLM integration is Phase Three
-- **Voice** uses Web Speech API (free, no API key) in Phase Two — professional STT/TTS (Whisper / ElevenLabs / Deepgram) in Phase Three
-- **Personality scoring** is rule-based and deterministic in Phase Two (HEXACO/DISC/Enneagram/Love Languages helpers in `src/lib/personality.ts`) — LLM-generated DNA synthesis comes in Phase Three
-- **Memory** is localStorage in Phase Two — vector store + user context persistence in Phase Three
-- **Storage** is localStorage for mood entries + journal entries in Phase Two — database (Supabase / Neon / Postgres) in Phase Three
-- **User identity** is anonymous localStorage session in Phase Two — auth (NextAuth / Clerk) in Phase Three
-- **Safety** keywords and resource hooks carry forward from Phase One; crisis detection pipeline matures in Phase Two/Three
+- **App Router** with route-based layouts — `/`, `/chat`, `/assessment`, `/features`, `/about`, `/mood`, `/journal`, `/voice`, `/insights`, `/checkin`
+- **Client components** for all interactive surfaces — `use client` where needed (all pages are client components)
+- **Mock AI** continues — deterministic responses by detected emotional tone; LLM integration is Phase Three
+- **Voice** uses Web Speech API (free, no API key) — professional STT/TTS (Whisper / ElevenLabs / Deepgram) in Phase Three
+- **Personality scoring** is rule-based and deterministic — LLM-generated DNA synthesis comes in Phase Three
+- **Memory** is localStorage — vector store + user context persistence in Phase Three
+- **Storage** is localStorage — database (Supabase / Neon / Postgres) in Phase Three
+- **User identity** is anonymous localStorage session — auth (NextAuth / Clerk) in Phase Three
+- **Safety** keywords and resource hooks carry forward; crisis detection pipeline matures across all routes
 
 ## Commands
 
@@ -153,7 +176,7 @@ npx tsc --noEmit
 ```
 youna/
 ├── src/
-│   ├── app/                  # App Router pages (12 routes)
+│   ├── app/                  # App Router pages (13 routes)
 │   │   ├── page.tsx          # Landing page
 │   │   ├── chat/             # Chat route
 │   │   ├── assessment/       # Personality assessment route
@@ -163,13 +186,16 @@ youna/
 │   │   ├── journal/          # Journaling (Phase Two)
 │   │   ├── voice/            # Voice Chat (Phase Two)
 │   │   ├── insights/         # Personality Insights (Phase Two)
+│   │   ├── checkin/          # Daily Check-in (Phase Two)
 │   │   ├── layout.tsx        # Root layout (font, global styles)
 │   │   ├── globals.css       # Tailwind + CSS variables
 │   │   └── page.tsx          # Home page entry
 │   ├── components/
 │   │   ├── Navbar.tsx        # Shared navbar
 │   │   ├── LandingPage.tsx   # Full landing page
-│   │   ├── ChatInterface.tsx # Chat UI (with voice button)
+│   │   ├── ChatInterface.tsx # Chat UI (crisis detection, voice, modals)
+│   │   ├── CrisisResources.tsx  # Crisis resources modal (Phase Two)
+│   │   ├── DailyCheckIn.tsx  # Daily check-in (Phase Two)
 │   │   ├── VoiceChat.tsx     # Voice chat interface (Phase Two)
 │   │   ├── PersonalityAssessment.tsx  # Assessment flow
 │   │   ├── MoodTracking.tsx  # Mood tracking (Phase Two)
@@ -196,7 +222,7 @@ youna/
 Youna is designed with safety as a core architectural principle:
 
 - **Not a therapist** — stated clearly on every screen
-- **Crisis detection** — keyword-based detection for suicide, self-harm, and harm-to-others language (carried forward from Phase One)
+- **Crisis detection** — keyword-based detection for suicide, self-harm, and harm-to-others language across chat, mood, and check-in
 - **Resource provision** — real crisis hotline resources surfaced immediately when crisis language is detected
 - **Professional referral pathway** — designed and hooked; connects users to professional help when needed
 - **Privacy** — user data is private, encrypted, and under user control (localStorage in Phase Two; encrypted DB + auth in Phase Three)
@@ -206,16 +232,16 @@ Youna is designed with safety as a core architectural principle:
 ## Roadmap
 
 ### Phase One (complete)
-- Landing page, chat UI, personality assessment, mood tracking UI, journaling prompts, daily check-ins, safety layer
+Landing page, chat UI, personality assessment, mood tracking UI, journaling prompts, daily check-ins, safety layer
 
-### Phase Two (live)
+### Phase Two (complete & live)
+- Mood tracking with history, charts, and streak
+- Journaling with 15 prompts, AI reflection, streak
 - Voice conversations (Web Speech API)
-- Advanced personality DNA (HEXACO, Enneagram, DISC, Jungian cognitive functions, Love Languages)
-- Real mood tracking with history and charts
-- Real journaling with AI reflection
-- Daily check-ins with streaks
-- Safety layer hardening (crisis detection pipeline, resource provider)
-- 9 new routes, 5 new components, shared type system, personality scoring library
+- Advanced personality DNA (6 frameworks)
+- Safety layer hardening (CrisisResources modal, crisis detection pipeline, persistent banners, crisis OTA responses across chat + mood + check-in)
+- Daily check-in with mood/energy/stress, reflection prompts, streak tracking
+- 13 routes, 9 new components, shared type system, personality scoring library
 
 ### Phase Three
 - LLM integration with model routing + cost optimization + fallbacks
