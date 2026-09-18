@@ -27,8 +27,8 @@ export const MODELS: Record<ModelProvider, LLMChoice> = {
   },
   claude: {
     provider: "claude",
-    model: "claude-sonnet-4-5-20250924",
-    label: "Claude Sonnet 4.5",
+    model: "claude-sonnet-4-20250514",
+    label: "Claude Sonnet 4",
     costPer1kInputTokens: 0.003,
     costPer1kOutputTokens: 0.015,
     maxTokens: 200000,
@@ -83,7 +83,6 @@ export interface LLMResponse {
   latencyMs: number;
 }
 
-// Compute cost for a provider+model combination without needing full usage record
 function estimateCostForProvider(
   inputTokens: number,
   outputTokens: number,
