@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Heart, Brain, Shield, Users, Target, BookOpen } from "lucide-react";
+import { Sparkles, Heart, Brain, Shield, Users, Target, BookOpen, Waves, Eye, Link2, Zap, Activity, Star } from "lucide-react";
 
 // ── Framework cards config ─────────────────────────────────────
 
@@ -95,6 +95,96 @@ const FRAMEWORK_CARDS: FrameworkCard[] = [
       { label: "3rd", value: "Acts of Service", detail: "Practical help — actions that ease the load" },
     ],
   },
+  {
+    icon: Star,
+    name: "Emotional DNA",
+    subtitle: "How you feel & regulate",
+    color: "from-amber-500 to-yellow-600",
+    description: "Your emotional landscape — granularity, regulation strategies, trigger sensitivity, recovery speed, alexithymia tendency, body awareness, and primary emotion access. 27 questions across 13 sub-dimensions.",
+    stats: [
+      { label: "Granularity", value: "72%", detail: "Moderate — can name most feelings" },
+      { label: "Reappraisal", value: "65%", detail: "Uses reframing to manage emotions" },
+      { label: "Suppression", value: "40%", detail: "Low — doesn't habitually suppress" },
+      { label: "Acceptance", value: "58%", detail: "Moderate — can make room for difficulty" },
+      { label: "Expression", value: "62%", detail: "Comfortable expressing to trusted people" },
+      { label: "Recovery speed", value: "70%", detail: "Recovers within hours, not days" },
+    ],
+  },
+  {
+    icon: Brain,
+    name: "Cognitive DNA",
+    subtitle: "How you think",
+    color: "from-sky-500 to-blue-600",
+    description: "Your cognitive style — reflective vs. intuitive, need for cognition, ambiguity tolerance, rumination, optimism bias, cognitive distortions (mind reading, catastrophizing, overgeneralization, all-or-nothing, emotional reasoning), analysis paralysis, and processing speed. 20 questions across 13 sub-dimensions.",
+    stats: [
+      { label: "Cognitive style", value: "Reflective", detail: "Thoughtful, analytical, deliberate" },
+      { label: "Need for cognition", value: "78%", detail: "High — enjoys thinking deeply" },
+      { label: "Ambiguity tolerance", value: "60%", detail: "Moderate — can handle some uncertainty" },
+      { label: "Rumination", value: "45%", detail: "Low-moderate — doesn't over-dwell" },
+      { label: "Distortion risk", value: "Low", detail: "Minimal mind-reading, catastrophizing" },
+      { label: "Processing speed", value: "Moderate", detail: "Deliberate but not slow" },
+    ],
+  },
+  {
+    icon: Link2,
+    name: "Relationship DNA",
+    subtitle: "How you connect",
+    color: "from-pink-500 to-rose-600",
+    description: "Your relational blueprint — attachment anxiety and avoidance, communication directness, conflict style (confront / avoid / accommodate), intimacy pacing, trust baseline, social energy budget, people-reading accuracy, and interdependence style. 21 questions across 11 sub-dimensions.",
+    stats: [
+      { label: "Attachment", value: "Secure", detail: "Comfortable with closeness and independence" },
+      { label: "Communication", value: "Direct", detail: "Addresses issues openly" },
+      { label: "Conflict style", value: "Balanced", detail: "Engages when needed, doesn't avoid" },
+      { label: "Trust baseline", value: "High", detail: "Assumes good intent by default" },
+      { label: "Social energy", value: "Moderate", detail: "Recharges with some alone time" },
+      { label: "Intimacy pacing", value: "Gradual", detail: "Builds trust over time" },
+    ],
+  },
+  {
+    icon: Zap,
+    name: "Motivation DNA",
+    subtitle: "What drives you",
+    color: "from-orange-500 to-red-600",
+    description: "Your motivational engine — Self-Determination Theory (autonomy, competence, relatedness), intrinsic vs. extrinsic orientation, identified/introjected/external regulation, growth mindset, approach vs. avoidance motivation, streak motivation, and outcome motivation. 13 questions across 13 sub-dimensions.",
+    stats: [
+      { label: "Autonomy", value: "76%", detail: "Self-directed, acts from own values" },
+      { label: "Competence", value: "72%", detail: "Feels capable and growing" },
+      { label: "Relatedness", value: "68%", detail: "Feels connected to others" },
+      { label: "Intrinsic drive", value: "High", detail: "Motivated by genuine interest" },
+      { label: "Growth mindset", value: "Strong", detail: "Believes in development through effort" },
+      { label: "Motivation type", value: "Approach", detail: "Pursues positive outcomes" },
+    ],
+  },
+  {
+    icon: Activity,
+    name: "Behavioral DNA",
+    subtitle: "How you act",
+    color: "from-emerald-500 to-green-600",
+    description: "Your behavioral tendencies — self-monitoring frequency, self-report accuracy, routine structure orientation, impulse regulation, habit formation susceptibility, environmental cue sensitivity, implementation intention readiness, consistency tendency, flexibility tendency, and self-reflection depth. 10 questions across 10 sub-dimensions.",
+    stats: [
+      { label: "Self-monitoring", value: "70%", detail: "Regularly reflects on own behavior" },
+      { label: "Routine structure", value: "High", detail: "Thrives with clear routines" },
+      { label: "Impulse regulation", value: "Strong", detail: "Pauses between impulse and action" },
+      { label: "Habit formation", value: "Moderate", detail: "Forms habits with consistent practice" },
+      { label: "Consistency", value: "High", detail: "Follows through on commitments" },
+      { label: "Flexibility", value: "Moderate", detail: "Adapts when plans change" },
+    ],
+  },
+  {
+    icon: Waves,
+    name: "Wellness DNA",
+    subtitle: "Your wellness baseline",
+    color: "from-teal-500 to-cyan-600",
+    description: "Your current wellness state — stress baseline and trigger count, energy baseline and drain sources, recovery method effectiveness, sleep quality, lifestyle health, wellness goal hierarchy, openness to interventions, somatic awareness, help-seeking style, and ritual comfort. 12 questions across 12 sub-dimensions.",
+    stats: [
+      { label: "Stress baseline", value: "45%", detail: "Low-moderate — generally calm" },
+      { label: "Energy baseline", value: "68%", detail: "Good — usually well-resourced" },
+      { label: "Sleep quality", value: "72%", detail: "Good — wakes up rested" },
+      { label: "Recovery methods", value: "Effective", detail: "Has practices that work" },
+      { label: "Somatic awareness", value: "High", detail: "Tuned into body signals" },
+      { label: "Openness to wellness", value: "High", detail: "Willing to explore new approaches" },
+    ],
+  },
 ];
 
 // ── Mock personality data (LLM-synthesized in Phase Three) ─────
@@ -161,8 +251,11 @@ export default function PersonalityInsights() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Your Personality Insights</h1>
           <p className="text-gray-600 leading-relaxed max-w-2xl">
-            Youna has built a multidimensional portrait of your personality using multiple frameworks.
-            Each lens reveals something different — together they create a picture that's more complete than any single model.
+            Youna has built a multidimensional portrait of your personality using 8 frameworks —
+            Big Five, HEXACO, Enneagram, DISC, Love Languages, Attachment, and the 3 new extended DNA
+            axes: Emotional, Cognitive, Relationship, Motivation, Behavioral, and Wellness. Each lens
+            reveals something different — together they create a picture more complete than any single
+            model. More frameworks are added as you chat, journal, and check in over time.
           </p>
         </div>
       </div>

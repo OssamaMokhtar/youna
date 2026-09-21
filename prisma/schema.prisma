@@ -1,0 +1,264 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: connection URL is no longer in schema.prisma.
+  // Configure the database connection in prisma.config.ts (for Migrate/CLI)
+  // and pass the URL to the PrismaClient constructor at runtime.
+}
+
+// ── Auth (NextAuth adapter tables) ─────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  profile             Profile?
+  assessmentResponses AssessmentResponse[]
+  conversationMessages ConversationMessage[]
+  moodEntries          MoodEntry[]
+  journalEntries       JournalEntry[]
+  dailyCheckIns        DailyCheckIn[]
+  goals                Goal[]
+  habits               Habit[]
+  subscription         Subscription?
+  memoryEntries        MemoryEntry[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Youna domain models ────────────────────────────────────────────────────
+
+model Profile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName      String?
+  avatarUrl        String?
+  onboardingComplete Boolean @default(false)
+  subscribedTier   Tier     @default(FREE)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum Tier {
+  FREE
+  PREMIUM
+  PRO
+  ULTRA
+  FAMILY
+  COUPLE
+}
+
+model AssessmentResponse {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  framework     Framework
+  submittedAt   DateTime @default(now())
+  rawAnswers    Json     // Record<string, number> or similar
+  scoredProfile Json?    // FullDNAProfile or partial, serialized
+  createdAt     DateTime @default(now())
+}
+
+enum Framework {
+  BIGFIVE
+  HEXACO
+  ENNEAGRAM
+  DISC
+  LOVE_LANGUAGES
+  ATTACHMENT
+  EMOTIONAL
+  COGNITIVE
+  RELATIONSHIP
+  MOTIVATION
+  BEHAVIORAL
+  WELLNESS
+}
+
+model ConversationMessage {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          MessageRole
+  content       String      @db.Text
+  createdAt     DateTime    @default(now())
+  parentMessageId String?   // for threading
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model MoodEntry {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood         MoodValue
+  energy       Int?
+  stress       Int?
+  note         String?     @db.Text
+  checkInDate  DateTime @db.Date
+  createdAt    DateTime    @default(now())
+
+  @@unique([userId, checkInDate])
+}
+
+enum MoodValue {
+  HAPPY
+  CALM
+  SAD
+  ANXIOUS
+  NEUTRAL
+}
+
+model JournalEntry {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String    @db.Text
+  promptId   String?
+  mood       MoodValue?
+  tags       String[]  // free-form tags
+  isCrisis   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model DailyCheckIn {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood         Int       // 1-5
+  energy       Int       // 1-5
+  stress       Int       // 1-5
+  reflection   String?   @db.Text
+  checkInDate  DateTime  @db.Date
+  createdAt    DateTime  @default(now())
+
+  @@unique([userId, checkInDate])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?  @db.Text
+  targetDate  DateTime?
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Habit {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title               String
+  frequency           Frequency     @default(DAILY)
+  goalCount           Int           @default(1)
+  currentStreak       Int           @default(0)
+  longestStreak       Int           @default(0)
+  lastCompletedAt     DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  CUSTOM
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                Tier               @default(FREE)
+  status              SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  stripeSubscriptionId String?
+  stripeCustomerId    String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  UNPAID
+}
+
+// ── Phase 3+ — memory system ──────────────────────────────────────────────
+
+model MemoryEntry {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content        String      @db.Text
+  type           MemoryType  @default(FACT)
+  salience       Float       @default(0.5)
+  createdAt      DateTime    @default(now())
+  lastAccessedAt DateTime    @default(now())
+}
+
+enum MemoryType {
+  FACT        // user facts: name, preferences, life details
+  PREFERENCE  // stated preferences: communication style, routines, boundaries
+  MILESTONE   // meaningful life events: achievements, transitions, losses
+  PATTERN     // observed patterns: mood cycles, trigger patterns, behavioral patterns
+  RELATIONSHIP // relationship details: people, dynamics, attachment notes
+  EMOTIONAL   // emotional patterns: trigger signatures, recovery patterns, regulation preferences
+}
