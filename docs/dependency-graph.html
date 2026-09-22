@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Youna Dependency Graph — Feature Impact Analysis</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+      background: var(--card, #0f1117);
+      color: var(--foreground, #e4e4e7);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border, #27272a);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      background: var(--card, #0f1117);
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    header .subtitle {
+      font-size: 12px;
+      color: var(--muted-foreground, #71717a);
+      margin-top: 2px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted-foreground, #71717a);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .graph-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #graph {
+      width: 100%;
+      height: 100%;
+    }
+
+    .node {
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .node:hover {
+      opacity: 1 !important;
+    }
+
+    .node circle {
+      stroke: var(--border, #27272a);
+      stroke-width: 1.5;
+      transition: r 0.2s, stroke-width 0.2s;
+    }
+
+    .node:hover circle {
+      stroke-width: 2.5;
+    }
+
+    .node text {
+      font-size: 11px;
+      fill: var(--foreground, #e4e4e7);
+      pointer-events: none;
+      font-family: var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+      text-shadow: 0 0 4px var(--card, #0f1117), 0 0 8px var(--card, #0f1117);
+    }
+
+    .node .node-label {
+      font-size: 10px;
+      fill: var(--muted-foreground, #71717a);
+      text-shadow: 0 0 4px var(--card, #0f1117);
+    }
+
+    .edge {
+      stroke: var(--border, #27272a);
+      stroke-width: 1.2;
+      stroke-opacity: 0.6;
+      fill: none;
+    }
+
+    .edge.dependency {
+      stroke: var(--accent, #6366f1);
+      stroke-opacity: 0.5;
+      stroke-dasharray: 4 3;
+    }
+
+    .edge.solid {
+      stroke-opacity: 0.8;
+    }
+
+    .edge-label {
+      font-size: 8px;
+      fill: var(--muted-foreground, #71717a);
+      pointer-events: none;
+      text-shadow: 0 0 3px var(--card, #0f1117);
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .controls button {
+      background: var(--card, #0f1117);
+      border: 1px solid var(--border, #27272a);
+      color: var(--foreground, #e4e4e7);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .controls button:hover {
+      background: var(--border, #27272a);
+      border-color: var(--accent, #6366f1);
+    }
+
+    .info-panel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 280px;
+      background: var(--card, #0f1117);
+      border: 1px solid var(--border, #27272a);
+      border-radius: 10px;
+      padding: 14px;
+      z-index: 10;
+      display: none;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .info-panel.visible {
+      display: block;
+    }
+
+    .info-panel h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--foreground, #e4e4e7);
+    }
+
+    .info-panel .info-category {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted-foreground, #71717a);
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    .info-panel p, .info-panel li {
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--muted-foreground, #71717a);
+    }
+
+    .info-panel ul {
+      padding-left: 14px;
+      margin-top: 4px;
+    }
+
+    .info-panel li {
+      margin-bottom: 2px;
+    }
+
+    .info-panel .tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 500;
+      margin-right: 3px;
+      margin-bottom: 2px;
+    }
+
+    .tag-critical { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .tag-high { background: rgba(251, 146, 60, 0.2); color: #fdba74; }
+    .tag-medium { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+    .tag-low { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+
+    .search-box {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+    }
+
+    .search-box input {
+      background: var(--card, #0f1117);
+      border: 1px solid var(--border, #27272a);
+      color: var(--foreground, #e4e4e7);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: 200px;
+      font-family: inherit;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent, #6366f1);
+    }
+
+    .search-box input::placeholder {
+      color: var(--muted-foreground, #71717a);
+    }
+
+    .zoom-hint {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      font-size: 10px;
+      color: var(--muted-foreground, #71717a);
+      text-align: right;
+      line-height: 1.4;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border, #27272a); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Youna — Feature Dependency Graph</h1>
+        <div class="subtitle">AI Coaching Programs + Insights Dashboard · Build dcfcee76 · 2026-09-22</div>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#6366f1"></span> New (this build)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Foundation (Phase Two)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Future (Phase 3-4)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Risk / Blocker</div>
+      </div>
+    </header>
+
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search node..." />
+    </div>
+
+    <div class="graph-container">
+      <svg id="graph"></svg>
+      <div class="controls">
+        <button onclick="zoomIn()">Zoom In</button>
+        <button onclick="zoomOut()">Zoom Out</button>
+        <button onclick="resetZoom()">Reset</button>
+        <button onclick="focusNew()">Focus New</button>
+        <button onclick="focusFoundation()">Focus Foundation</button>
+        <button onclick="focusFuture()">Focus Future</button>
+      </div>
+      <div class="info-panel" id="infoPanel">
+        <h3 id="infoTitle">Node</h3>
+        <div id="infoContent"></div>
+      </div>
+      <div class="zoom-hint">Scroll to zoom · Drag to pan · Click node for details</div>
+    </div>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // ── Graph data ──────────────────────────────────────────────────────────────
+    const nodes = [
+      // ── This build (new) ────────────────────────────────────────────────
+      { id: "coaching-engine", label: "Coaching Engine\n(coaching.ts)", group: "new", description: "10 structured programs, 77 steps, 6 frameworks. Step-based flow with text/multiple-choice/scale/journal response types.", type: "feature", critical: false },
+      { id: "coaching-api", label: "Coaching API\n(route.ts)", group: "new", description: "5 endpoints via POST/GET with ?action=start|respond|programs|status|clear. In-memory session store.", type: "feature", critical: false },
+      { id: "coaching-lib", label: "Coaching Library UI\n(CoachingLibrary)", group: "new", description: "Browseable program grid with framework colors, step count, duration, best-for tags.", type: "feature", critical: false },
+      { id: "coaching-client", label: "Coaching Client UI\n(CoachingProgramClient)", group: "new", description: "Step-by-step interactive flow: progress bar, instruction + exercise blocks, multiple input types, completion screen.", type: "feature", critical: false },
+      { id: "insights-data", label: "Insights Data Layer\n(insights.ts)", group: "new", description: "localStorage readers/writers for mood, journal, personality, coaching. Sentiment analysis (word-list). Mood trend, distribution, streak, coaching stats, recommendation engine.", type: "feature", critical: false },
+      { id: "insights-ui", label: "Insights Dashboard UI\n(InsightsDashboard)", group: "new", description: "Streak card, today check-ins, journal count, 14-day mood trend chart, mood distribution bars, journal sentiment trend, coaching progress stats, personality snapshot, recommendation banner.", type: "feature", critical: false },
+      { id: "insights-page", label: "Insights Page\n(page.tsx)", group: "new", description: "New /insights route replacing old personality-only page.", type: "feature", critical: false },
+
+      // ── Foundation (Phase Two, already built) ────────────────────────────
+      { id: "localstorage", label: "localStorage\n(browser API)", group: "foundation", description: "Browser storage used by insights.ts for all data persistence. 5MB limit. No sync, no user isolation.", type: "infra", critical: true },
+      { id: "mood-detection", label: "Mood Detection\n(getMood in Chat)", group: "foundation", description: "Keyword-based mood detection in ChatInterface.tsx. Detects happy/calm/sad/anxious/neutral from message text.", type: "infra", critical: true },
+      { id: "personality-assessment", label: "Personality Assessment\n(types.ts + personality.ts)", group: "foundation", description: "Full DNA profile: Big Five, HEXACO, Enneagram, DISC, Love Languages, Attachment. 487-line scoring engine (scoreFullDNA).", type: "infra", critical: true },
+      { id: "chat-interface", label: "Chat Interface\n(ChatInterface.tsx)", group: "foundation", description: "Main chat UI. Crisis detection, counseling intent, mood detection, journal prompt modal, mood check-in modal. Loads personality from localStorage.", type: "infra", critical: true },
+      { id: "llm-api", label: "LLM API\n(api/chat/complete)", group: "foundation", description: "POST /api/chat/complete. Model routing (GPT/Claude/Gemini/mock). Crisis gate. Personality context injection. Currently mock mode.", type: "infra", critical: true },
+      { id: "personality-ui", label: "Personality Insights UI\n(PersonalityInsights)", group: "foundation", description: "8 framework tabs with live assessment stats. Original /insights page content (now replaced by dashboard).", type: "infra", critical: false },
+
+      // ── Future (Phase Three + Roadmap) ───────────────────────────────────
+      { id: "f-coaching-llm", label: "LLM Coaching Reflection\n(Phase 3)", group: "future", description: "LLM generates personalized mid-program guidance and completion reflections. Uses buildCoachingPrompt. A/B test vs. pre-authored.", type: "future", critical: false },
+      { id: "f-coaching-persist", label: "Coaching Persistence\n(Phase 3)", group: "future", description: "Replace in-memory session store with localStorage + DB (Prisma + PostgreSQL). Cross-session continuity.", type: "future", critical: true },
+      { id: "f-coaching-recs", label: "Coaching Recommendation Engine\n(Phase 3)", group: "future", description: "getRecommendedPrograms() + DNA + mood data → personalized program suggestions on dashboard. 7-logic recommendation branches.", type: "future", critical: false },
+      { id: "f-program-expand", label: "Program Expansion\n(Phase 3/4)", group: "future", description: "New programs: relationship coaching, career coaching, sleep coaching, nutrition coaching. Same step-based flow architecture.", type: "future", critical: false },
+      { id: "f-db-data", label: "DB-Backed Data Store\n(Phase 3)", group: "future", description: "Replace localStorage with Prisma + PostgreSQL for moods, journals, coaching sessions, personality. Swap load/save functions in insights.ts.", type: "future", critical: true },
+      { id: "f-llm-sentiment", label: "LLM Sentiment Analysis\n(Phase 3)", group: "future", description: "Replace word-list sentiment engine with LLM-based sentiment. Richer nuance, context awareness, negation handling.", type: "future", critical: false },
+      { id: "f-wellness-score", label: "Wellness Score\n(Phase 3)", group: "future", description: "Composite wellness score from mood trend + journal sentiment + coaching stats + personality snapshot. Single metric for dashboard highlight.", type: "future", critical: false },
+      { id: "f-b2b-dashboard", label: "B2B Dashboard\n(Phase 4)", group: "future", description: "Anonymized aggregate wellness metrics for enterprise buyers: mood trends, program completion rates, engagement metrics. Separate revenue stream.", type: "future", critical: false },
+      { id: "f-wiring-chat", label: "Coaching-from-Chat Wiring\n(next)", group: "future", description: "Add 'Start a coaching program' suggestion in ChatInterface when user expresses intent to work on something. Links to /coaching or launches modal.", type: "future", critical: true },
+      { id: "f-mood-autolog", label: "Mood Auto-Logging from Chat\n(next)", group: "future", description: "Call saveMoodCheckin() from ChatInterface on each message using existing getMood() detection. Enriches mood trend data immediately.", type: "future", critical: true },
+      { id: "f-journal-persist", label: "Journal Persistence\n(next)", group: "future", description: "Save journal entries to localStorage via insights.ts when user completes a journal prompt. Feeds journal sentiment trend.", type: "future", critical: true },
+    ];
+
+    const edges = [
+      // ── This build dependencies (upstream) ────────────────────────────────
+      { source: "coaching-engine", target: "localstorage", label: "future persistence", type: "dependency" },
+      { source: "coaching-engine", target: "personality-assessment", label: "recommendations", type: "dependency" },
+      { source: "coaching-api", target: "localstorage", label: "future sessions", type: "dependency" },
+      { source: "coaching-api", target: "personality-assessment", label: "personality context", type: "dependency" },
+      { source: "coaching-client", target: "coaching-api", label: "starts/responds", type: "solid" },
+      { source: "coaching-client", target: "coaching-engine", label: "program data", type: "solid" },
+      { source: "coaching-lib", target: "coaching-api", label: "fetches list", type: "solid" },
+      { source: "coaching-lib", target: "coaching-client", label: "launches", type: "solid" },
+      { source: "insights-data", target: "localstorage", label: "reads/writes", type: "solid" },
+      { source: "insights-data", target: "mood-detection", label: "future wire", type: "dependency" },
+      { source: "insights-data", target: "personality-assessment", label: "snapshot data", type: "dependency" },
+      { source: "insights-ui", target: "insights-data", label: "reads summary", type: "solid" },
+      { source: "insights-ui", target: "coaching-lib", label: "coaching stats", type: "dependency" },
+      { source: "insights-page", target: "insights-ui", label: "renders", type: "solid" },
+      { source: "insights-page", target: "personality-ui", label: "replaced", type: "dependency" },
+
+      // ── Chat interface connections ─────────────────────────────────────────
+      { source: "chat-interface", target: "localstorage", label: "reads personality", type: "solid" },
+      { source: "chat-interface", target: "mood-detection", label: "uses", type: "solid" },
+      { source: "chat-interface", target: "llm-api", label: "calls", type: "solid" },
+      { source: "chat-interface", target: "personality-assessment", label: "loads", type: "solid" },
+
+      // ── Future dependencies (downstream from this build) ───────────────────
+      { source: "f-coaching-llm", target: "coaching-engine", label: "uses prompts", type: "dependency" },
+      { source: "f-coaching-llm", target: "coaching-api", label: "enhances", type: "dependency" },
+      { source: "f-coaching-persist", target: "coaching-api", label: "replaces store", type: "dependency" },
+      { source: "f-coaching-persist", target: "localstorage", label: "then DB", type: "dependency" },
+      { source: "f-coaching-recs", target: "coaching-engine", label: "getRecommended", type: "dependency" },
+      { source: "f-coaching-recs", target: "personality-assessment", label: "DNA data", type: "dependency" },
+      { source: "f-coaching-recs", target: "insights-data", label: "mood data", type: "dependency" },
+      { source: "f-program-expand", target: "coaching-engine", label: "same architecture", type: "dependency" },
+      { source: "f-program-expand", target: "coaching-api", label: "same endpoints", type: "dependency" },
+      { source: "f-db-data", target: "insights-data", label: "swap storage", type: "dependency" },
+      { source: "f-db-data", target: "localstorage", label: "replaces", type: "dependency" },
+      { source: "f-llm-sentiment", target: "insights-data", label: "replaces engine", type: "dependency" },
+      { source: "f-wellness-score", target: "insights-data", label: "composite", type: "dependency" },
+      { source: "f-wellness-score", target: "personality-assessment", label: "DNA input", type: "dependency" },
+      { source: "f-b2b-dashboard", target: "insights-data", label: "aggregate", type: "dependency" },
+      { source: "f-b2b-dashboard", target: "f-coaching-persist", label: "needs DB", type: "dependency" },
+      { source: "f-wiring-chat", target: "chat-interface", label: "adds suggestion", type: "dependency" },
+      { source: "f-wiring-chat", target: "coaching-lib", label: "links to", type: "dependency" },
+      { source: "f-wiring-chat", target: "coaching-client", label: "launches", type: "dependency" },
+      { source: "f-mood-autolog", target: "chat-interface", label: "wires in", type: "dependency" },
+      { source: "f-mood-autolog", target: "insights-data", label: "saveMoodCheckin", type: "dependency" },
+      { source: "f-mood-autolog", target: "mood-detection", label: "uses getMood", type: "dependency" },
+      { source: "f-journal-persist", target: "chat-interface", label: "wires in", type: "dependency" },
+      { source: "f-journal-persist", target: "insights-data", label: "saveJournal", type: "dependency" },
+
+      // ── Foundation internal connections ────────────────────────────────────
+      { source: "personality-assessment", target: "localstorage", label: "stores profile", type: "solid" },
+      { source: "llm-api", target: "personality-assessment", label: "injects context", type: "dependency" },
+    ];
+
+    // ── Color mappings ──────────────────────────────────────────────────────────
+    const colors = {
+      new: "#6366f1",        // indigo
+      foundation: "#22c55e", // green
+      future: "#f59e0b",     // amber
+    };
+
+    const nodeColors = {
+      feature: "#6366f1",
+      infra: "#71717a",
+      future: "#f59e0b",
+    };
+
+    // ── Build the graph ─────────────────────────────────────────────────────────
+    const width = window.innerWidth;
+    const height = window.innerHeight - 70;
+
+    const svg = d3.select("#graph")
+      .attr("width", width)
+      .attr("height", height);
+
+    const g = svg.append("g");
+
+    // Zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.3, 3])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
+
+    // Arrow markers
+    svg.append("defs").selectAll("marker")
+      .data(["arrow"])
+      .join("marker")
+      .attr("id", "arrow")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 20)
+      .attr("refY", 0)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "var(--border, #27272a)");
+
+    // Create node map for lookup
+    const nodeMap = {};
+    nodes.forEach(n => nodeMap[n.id] = n);
+
+    // Build links with source/target objects
+    const links = edges.map(e => ({
+      ...e,
+      source: typeof e.source === "string" ? nodeMap[e.source] : e.source,
+      target: typeof e.target === "string" ? nodeMap[e.target] : e.target,
+    })).filter(e => e.source && e.target);
+
+    // Force simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
+        if (d.type === "solid") return 80;
+        return 120;
+      }).strength(d => d.type === "solid" ? 0.6 : 0.3))
+      .force("charge", d3.forceManyBody().strength(-250))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collision", d3.forceCollide().radius(60));
+
+    // Draw edges
+    const edgeGroup = g.append("g").attr("class", "edges");
+    const edgePaths = edgeGroup.selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("class", d => `edge ${d.type}`)
+      .attr("marker-end", "url(#arrow)");
+
+    // Edge labels
+    const edgeLabels = edgeGroup.selectAll("text")
+      .data(links)
+      .join("text")
+      .attr("class", "edge-label")
+      .text(d => d.label)
+      .attr("text-anchor", "middle")
+      .attr("dy", -4);
+
+    // Draw nodes
+    const nodeGroup = g.append("g").attr("class", "nodes");
+    const nodeElements = nodeGroup.selectAll("g")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .call(d3.drag()
+        .on("start", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        })
+        .on("drag", (event, d) => {
+          d.fx = event.x;
+          d.fy = event.y;
+        })
+        .on("end", (event, d) => {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }));
+
+    // Node circles
+    nodeElements.append("circle")
+      .attr("r", d => d.critical ? 22 : (d.group === "new" ? 18 : (d.group === "future" ? 16 : 14)))
+      .attr("fill", d => nodeColors[d.type] || colors[d.group] || "#71717a")
+      .attr("stroke", d => d.critical ? "#ef4444" : "var(--border, #27272a)")
+      .attr("stroke-width", d => d.critical ? 2 : 1.5);
+
+    // Node icons (simple shapes)
+    nodeElements.each(function(d) {
+      const el = d3.select(this);
+      if (d.type === "feature") {
+        el.append("text")
+          .attr("text-anchor", "middle")
+          .attr("dy", "0.35em")
+          .attr("fill", "white")
+          .attr("font-size", "12px")
+          .attr("font-weight", "bold")
+          .text(d => d.id.includes("coaching") ? "C" : "I");
+      } else if (d.group === "foundation") {
+        el.append("rect")
+          .attr("x", -6)
+          .attr("y", -6)
+          .attr("width", 12)
+          .attr("height", 12)
+          .attr("fill", "none")
+          .attr("stroke", "white")
+          .attr("stroke-width", 1.5);
+      } else if (d.group === "future") {
+        el.append("text")
+          .attr("text-anchor", "middle")
+          .attr("dy", "0.35em")
+          .attr("fill", "white")
+          .attr("font-size", "10px")
+          .text("→");
+      }
+    });
+
+    // Node labels
+    nodeElements.append("text")
+      .attr("class", "node-label")
+      .attr("text-anchor", "middle")
+      .attr("dy", d => d.critical ? 32 : 28)
+      .text(d => d.label.split("\n")[0]);
+
+    nodeElements.append("text")
+      .attr("class", "node-label")
+      .attr("text-anchor", "middle")
+      .attr("dy", d => d.critical ? 42 : 38)
+      .attr("font-size", "9px")
+      .text(d => d.label.split("\n")[1] || "");
+
+    // Node click handler
+    nodeElements.on("click", function(event, d) {
+      showInfo(d);
+      // Highlight connected nodes
+      const connectedIds = new Set();
+      links.forEach(l => {
+        if (l.source.id === d.id) connectedIds.add(l.target.id);
+        if (l.target.id === d.id) connectedIds.add(l.source.id);
+      });
+      nodeElements.style("opacity", n => connectedIds.has(n.id) || n.id === d.id ? 1 : 0.2);
+      edgePaths.style("opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.1);
+      edgeLabels.style("opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.1);
+    });
+
+    // Simulation tick
+    simulation.on("tick", () => {
+      edgePaths
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      edgeLabels
+        .attr("x", d => (d.source.x + d.target.x) / 2)
+        .attr("y", d => (d.source.y + d.target.y) / 2);
+
+      nodeElements
+        .attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+
+    // ── Info panel ──────────────────────────────────────────────────────────────
+    function showInfo(d) {
+      const panel = document.getElementById("infoPanel");
+      document.getElementById("infoTitle").textContent = d.label;
+
+      const categories = [];
+      if (d.description) categories.push({ label: "Description", content: d.description });
+      if (d.type === "feature") {
+        categories.push({ label: "Status", content: "✅ Shipped in this build (dcfcee76)" });
+        categories.push({ label: "Critical dependency", content: d.critical ? "⚠️ Blocker for future features" : "Supports future features" });
+      } else if (d.group === "foundation") {
+        categories.push({ label: "Status", content: "Phase Two — foundational infrastructure" });
+        categories.push({ label: "Critical", content: d.critical ? "⚠️ Yes — this build depends on it" : "No" });
+      } else if (d.group === "future") {
+        const priority = d.id.includes("wiring") || d.id.includes("autolog") || d.id.includes("persist") ? "Next (this week)" :
+                        d.id.includes("recs") || d.id.includes("wellness") || d.id.includes("llm") ? "Phase 3" : "Phase 3/4";
+        categories.push({ label: "Timeline", content: priority });
+        categories.push({ label: "Depends on", content: getDependsOn(d.id) });
+        categories.push({ label: "Unlocks", content: getUnlocks(d.id) });
+      }
+
+      let html = "";
+      categories.forEach(c => {
+        html += `<div class="info-category">${c.label}</div>`;
+        if (c.content.includes("⚠️")) {
+          html += `<p><span class="tag tag-critical">${c.content}</span></p>`;
+        } else if (c.content.startsWith("✅")) {
+          html += `<p>${c.content}</p>`;
+        } else if (c.content.startsWith("Next") || c.content.startsWith("Phase")) {
+          html += `<p><span class="tag tag-high">${c.content}</span></p>`;
+        } else {
+          html += `<p>${c.content}</p>`;
+        }
+      });
+
+      document.getElementById("infoContent").innerHTML = html;
+      panel.classList.add("visible");
+    }
+
+    function getDependsOn(id) {
+      const deps = edges.filter(e => e.target === id).map(e => e.source.label.split("\n")[0]);
+      if (deps.length === 0) return "None (starting point)";
+      return deps.join(", ");
+    }
+
+    function getUnlocks(id) {
+      const unlocks = edges.filter(e => e.source === id).map(e => e.target.label.split("\n")[0]);
+      if (unlocks.length === 0) return "None (terminal feature)";
+      return unlocks.join(", ");
+    }
+
+    // ── Search ──────────────────────────────────────────────────────────────────
+    document.getElementById("search").addEventListener("input", function() {
+      const q = this.value.toLowerCase();
+      nodeElements.style("opacity", n => {
+        if (!q) return 1;
+        const match = n.id.toLowerCase().includes(q) || n.label.toLowerCase().includes(q);
+        return match ? 1 : 0.15;
+      });
+      edgePaths.style("opacity", l => {
+        if (!q) return 0.6;
+        const match = l.source.id.toLowerCase().includes(q) || l.target.id.toLowerCase().includes(q) || l.label.toLowerCase().includes(q);
+        return match ? 1 : 0.05;
+      });
+      edgeLabels.style("opacity", l => {
+        if (!q) return 0.6;
+        return l.label.toLowerCase().includes(q) ? 1 : 0.05;
+      });
+    });
+
+    // ── Zoom controls ───────────────────────────────────────────────────────────
+    function zoomIn() { svg.transition().duration(300).call(zoom.scaleBy, 1.4); }
+    function zoomOut() { svg.transition().duration(300).call(zoom.scaleBy, 0.7); }
+    function resetZoom() { svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity); }
+
+    function focusNew() {
+      const newNodes = nodes.filter(n => n.group === "new");
+      const cx = d3.mean(newNodes, n => n.x);
+      const cy = d3.mean(newNodes, n => n.y);
+      const bounds = newNodes.reduce((b, n) => ({ x: Math.min(b.x, n.x), y: Math.min(b.y, n.y), w: Math.max(b.w, n.x - b.x), h: Math.max(b.h, n.y - b.y) }), { x: Infinity, y: Infinity, w: 0, h: 0 });
+      const scale = Math.min(width / (bounds.w + 200), height / (bounds.h + 200), 1.2);
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width/2 - cx*scale, height/2 - cy*scale).scale(scale));
+    }
+
+    function focusFoundation() {
+      const foundNodes = nodes.filter(n => n.group === "foundation");
+      const cx = d3.mean(foundNodes, n => n.x);
+      const cy = d3.mean(foundNodes, n => n.y);
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width/2 - cx, height/2 - cy).scale(1));
+    }
+
+    function focusFuture() {
+      const futureNodes = nodes.filter(n => n.group === "future");
+      const cx = d3.mean(futureNodes, n => n.x);
+      const cy = d3.mean(futureNodes, n => n.y);
+      svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width/2 - cx, height/2 - cy).scale(0.8));
+    }
+
+    // ── Initial layout ──────────────────────────────────────────────────────────
+    setTimeout(() => {
+      // Position groups initially to speed up layout
+      const newNodes = nodes.filter(n => n.group === "new");
+      const foundNodes = nodes.filter(n => n.group === "foundation");
+      const futureNodes = nodes.filter(n => n.group === "future");
+
+      newNodes.forEach((n, i) => {
+        n.x = width * 0.35 + (Math.random() - 0.5) * 150;
+        n.y = height * 0.4 + (Math.random() - 0.5) * 150;
+      });
+      foundNodes.forEach((n, i) => {
+        n.x = width * 0.35 + (Math.random() - 0.5) * 100;
+        n.y = height * 0.75 + (Math.random() - 0.5) * 100;
+      });
+      futureNodes.forEach((n, i) => {
+        n.x = width * 0.7 + (Math.random() - 0.5) * 200;
+        n.y = height * 0.35 + (Math.random() - 0.5) * 200;
+      });
+
+      simulation.alpha(0.5).restart();
+    }, 100);
+
+    // Resize handler
+    window.addEventListener("resize", () => {
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight - 70;
+      svg.attr("width", newWidth).attr("height", newHeight);
+      simulation.force("center", d3.forceCenter(newWidth / 2, newHeight / 2));
+      simulation.alpha(0.3).restart();
+    });
+  </script>
+</body>
+</html>
