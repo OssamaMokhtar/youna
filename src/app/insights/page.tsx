@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import PersonalityInsights from "@/components/PersonalityInsights";
+import InsightsDashboard from "@/components/InsightsDashboard";
 
 export const metadata: Metadata = {
-  title: "Your Personality Insights — Youna",
-  description: "Understand your personality across multiple frameworks — Big Five, HEXACO, Enneagram, DISC, and Love Languages.",
+  title: "Insights · Youna",
+  description: "Your wellness patterns, mood trends, journal sentiment, and coaching progress — all in one place.",
 };
 
 export default function InsightsPage() {
-  return <PersonalityInsights />;
+  return <InsightsDashboard />;
 }
