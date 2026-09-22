@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus, Smile, Shield, MessageSquare } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus, Smile, Shield, MessageSquare, Sparkles } from "lucide-react";
 import CrisisResources from "./CrisisResources";
 import { formatDisclaimer } from "@/lib/prompts";
+import { saveMoodCheckin, saveJournalEntry, type Mood } from "@/lib/insights";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,27 @@ const COUNSELING_INTENT: RegExp[] = [
   /\bpsychiatric\b/i,
   /\bget professional help\b/i,
   /\bsomeone to talk to\b/i,
+];
+
+const COACHING_INTENT: RegExp[] = [
+  /\bhelp me (with|through|improve|work on|change|stop|start)\b/i,
+  /\bi want to (work on|change|improve|stop|start|figure out|understand)\b/i,
+  /\bi need to (work on|change|improve|stop|start)\b/i,
+  /\bi'm struggling (with|to|in)\b/i,
+  /\bhow do i (deal with|handle|stop|start|improve|work on)\b/i,
+  /\bwhat should i (do|work on|focus on|start)\b/i,
+  /\bcoach me\b/i,
+  /\bmentor me\b/i,
+  /\bi want a (coach|mentor|guide|program)\b/i,
+  /\bcbt\b/i,
+  /\bdbt\b/i,
+  /\bact\b/i,
+  /\bmindfulness\b/i,
+  /\bguided (exercise|session|meditation|program)\b/i,
+  /\bi want to work on\b/i,
+  /\bi want to improve\b/i,
+  /\bi want to stop\b/i,
+  /\bi want to start\b/i,
 ];
 
 const MAX_HISTORY_MESSAGES = 12;
@@ -198,6 +220,10 @@ export default function ChatInterface() {
   const [showJournalPrompt, setShowJournalPrompt] = useState(false);
   const [showCrisisResources, setShowCrisisResources] = useState(false);
   const [crisisReason, setCrisisReason] = useState<"chat" | "mood_tracking" | "checkin">("chat");
+  const [showCoachingSuggestion, setShowCoachingSuggestion] = useState(false);
+  const [showJournalSavePrompt, setShowJournalSavePrompt] = useState(false);
+  const [pendingJournalContent, setPendingJournalContent] = useState("");
+  const [pendingJournalMood, setPendingJournalMood] = useState<Mood>("neutral");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -224,6 +250,10 @@ export default function ChatInterface() {
     return "default";
   };
 
+  const isCoachingIntent = (text: string): boolean => {
+    return COACHING_INTENT.some((kw) => kw.test(text));
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
@@ -242,6 +272,11 @@ export default function ChatInterface() {
         mood: "sad",
       };
       setMessages((prev) => [...prev, crisisMessage]);
+
+      // Auto-log mood for crisis messages
+      try {
+        saveMoodCheckin({ mood: "sad", source: "chat" });
+      } catch {}
 
       const crisisResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -265,6 +300,20 @@ export default function ChatInterface() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+
+    // Auto-log mood from chat (silent, no UI interruption)
+    try {
+      saveMoodCheckin({ mood: userMessage.mood as Mood, source: "chat" });
+    } catch {
+      // localStorage may be unavailable (private mode, quota exceeded) — silent fail
+    }
+
+    // Show coaching suggestion if message expresses coaching intent
+    if (isCoachingIntent(text) && !isCrisis(text)) {
+      setShowCoachingSuggestion(true);
+      setTimeout(() => setShowCoachingSuggestion(false), 12000);
+    }
+
     setInput("");
     setIsTyping(true);
     setApiLatency(null);
@@ -386,6 +435,39 @@ export default function ChatInterface() {
             Dismiss
             <ArrowRight size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Coaching suggestion banner */}
+      {showCoachingSuggestion && (
+        <div className="px-6 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <Sparkles size={14} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-indigo-700">Want to work on this together?</p>
+              <p className="text-xs text-indigo-500">Try a structured coaching program — CBT, mindfulness, or more.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowCoachingSuggestion(false);
+                window.location.href = "/coaching";
+              }}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+            >
+              Explore programs
+              <ArrowRight size={12} />
+            </button>
+            <button
+              onClick={() => setShowCoachingSuggestion(false)}
+              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -534,6 +616,18 @@ function MoodCheckModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={() => {
             if (selectedMood) {
+              const moodMap: Record<string, Mood> = {
+                "great": "happy",
+                "good": "happy",
+                "okay": "neutral",
+                "low": "sad",
+                "struggling": "sad",
+              };
+              try {
+                saveMoodCheckin({ mood: moodMap[selectedMood] ?? "neutral", source: "checkin" });
+              } catch {
+                // silent fail
+              }
               onClose();
             }
           }}
@@ -549,6 +643,10 @@ function MoodCheckModal({ onClose }: { onClose: () => void }) {
 
 function JournalPromptModal({ onClose }: { onClose: () => void }) {
   const [promptIndex, setPromptIndex] = useState(0);
+  const [journalContent, setJournalContent] = useState("");
+  const [journalMood, setJournalMood] = useState<Mood>("neutral");
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const prompts = [
     "What's one thing you're grateful for today?",
@@ -563,6 +661,27 @@ function JournalPromptModal({ onClose }: { onClose: () => void }) {
     "What does 'healing' mean to you, personally?",
   ];
 
+  const handleSave = async () => {
+    if (!journalContent.trim()) return;
+    setSaving(true);
+    try {
+      saveJournalEntry({
+        title: prompts[promptIndex].slice(0, 50),
+        content: journalContent.trim(),
+        mood: journalMood,
+      });
+    } catch {
+      // silent fail
+    } finally {
+      setSaving(false);
+    }
+    onClose();
+  };
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -574,6 +693,43 @@ function JournalPromptModal({ onClose }: { onClose: () => void }) {
       <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
         <p className="text-gray-700 italic">"{prompts[promptIndex]}"</p>
       </div>
+
+      {/* Journal text input */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Your entry</label>
+        <textarea
+          ref={textareaRef}
+          value={journalContent}
+          onChange={(e) => setJournalContent(e.target.value)}
+          placeholder="Write your thoughts here…"
+          rows={4}
+          className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent placeholder-gray-400 transition-all"
+        />
+      </div>
+
+      {/* Mood selector */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">How are you feeling about this?</label>
+        <div className="grid grid-cols-5 gap-2">
+          {(["happy", "calm", "neutral", "sad", "anxious"] as Mood[]).map((mood) => (
+            <button
+              key={mood}
+              onClick={() => setJournalMood(mood)}
+              className={`flex flex-col items-center p-2 rounded-lg border-2 text-xs transition-all ${
+                journalMood === mood
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              <span className="text-base">
+                {mood === "happy" ? "😊" : mood === "calm" ? "😌" : mood === "neutral" ? "😐" : mood === "sad" ? "😔" : "😰"}
+              </span>
+              <span className="capitalize">{mood}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <button
           onClick={() => setPromptIndex((prev) => (prev - 1 + prompts.length) % prompts.length)}
@@ -589,11 +745,13 @@ function JournalPromptModal({ onClose }: { onClose: () => void }) {
           Next
         </button>
       </div>
+
       <button
-        onClick={onClose}
-        className="w-full mt-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-medium"
+        onClick={handleSave}
+        disabled={!journalContent.trim() || saving}
+        className="w-full mt-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Start Journaling
+        {saving ? "Saving…" : "Save Entry"}
       </button>
     </div>
   );

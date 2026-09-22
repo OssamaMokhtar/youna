@@ -65,6 +65,41 @@ export function saveMoodCheckin(checkin: Omit<MoodCheckin, "id" | "timestamp">):
   return entry;
 }
 
+// ── Journal persistence ────────────────────────────────────────────────────────────
+
+const JOURNAL_SAVE_KEY = "youna-saved-journal-entries";
+
+export interface SavedJournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  mood: Mood;
+  timestamp: string;
+}
+
+export function loadSavedJournalEntries(): SavedJournalEntry[] {
+  try {
+    const raw = localStorage.getItem(JOURNAL_SAVE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveJournalEntry(entry: Omit<SavedJournalEntry, "id" | "timestamp">): SavedJournalEntry {
+  const saved: SavedJournalEntry = {
+    ...entry,
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+  };
+  const existing = loadSavedJournalEntries();
+  existing.push(saved);
+  localStorage.setItem(JOURNAL_SAVE_KEY, JSON.stringify(existing));
+  return saved;
+}
+
 export function getMoodTrend(days: number = 14): { date: string; mood: Mood; count: number }[] {
   const checkins = loadMoodCheckins();
   const map = new Map<string, { mood: Mood; count: number }>();
@@ -196,17 +231,20 @@ export function analyzeSentiment(text: string): { sentiment: Sentiment; score: n
 }
 
 export function getJournalSentimentTrend(days: number = 14): { date: string; sentiment: Sentiment; avgScore: number; count: number }[] {
-  const entries = loadJournalEntries();
+  const entries = [...loadJournalEntries(), ...loadSavedJournalEntries()];
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
 
   const byDate = new Map<string, { scores: number[]; sentiments: Sentiment[] }>();
 
   for (const entry of entries) {
-    const ts = new Date(entry.timestamp);
+    const ts = entry.timestamp ? new Date(entry.timestamp) : null;
+    if (!ts) continue;
     if (ts < cutoff) continue;
     const dateKey = ts.toISOString().slice(0, 10);
-    const analysis = analyzeSentiment(entry.content);
+    const content = entry.content ?? "";
+    if (!content) continue;
+    const analysis = analyzeSentiment(content);
     const existing = byDate.get(dateKey) || { scores: [], sentiments: [] };
     existing.scores.push(analysis.score);
     existing.sentiments.push(analysis.sentiment);
@@ -228,10 +266,12 @@ export function getJournalSentimentTrend(days: number = 14): { date: string; sen
 }
 
 export function getLatestJournalSentiment(): { sentiment: Sentiment; score: number } | null {
-  const entries = loadJournalEntries();
+  const entries = [...loadJournalEntries(), ...loadSavedJournalEntries()];
   if (entries.length === 0) return null;
   const latest = entries[entries.length - 1];
-  const analysis = analyzeSentiment(latest.content);
+  const content = latest.content ?? "";
+  if (!content) return null;
+  const analysis = analyzeSentiment(content);
   return { sentiment: analysis.sentiment, score: analysis.score };
 }
 
