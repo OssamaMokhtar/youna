@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus, Smile, Shield, MessageSquare, Sparkles } from "lucide-react";
+import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus, Smile, Shield, MessageSquare, Sparkles, ChevronRight } from "lucide-react";
 import CrisisResources from "./CrisisResources";
 import { formatDisclaimer } from "@/lib/prompts";
 import { saveMoodCheckin, saveJournalEntry, type Mood } from "@/lib/insights";
+import CoachingQuickPickModal from "@/components/CoachingQuickPickModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -221,6 +222,7 @@ export default function ChatInterface() {
   const [showCrisisResources, setShowCrisisResources] = useState(false);
   const [crisisReason, setCrisisReason] = useState<"chat" | "mood_tracking" | "checkin">("chat");
   const [showCoachingSuggestion, setShowCoachingSuggestion] = useState(false);
+  const [showQuickPick, setShowQuickPick] = useState(false);
   const [showJournalSavePrompt, setShowJournalSavePrompt] = useState(false);
   const [pendingJournalContent, setPendingJournalContent] = useState("");
   const [pendingJournalMood, setPendingJournalMood] = useState<Mood>("neutral");
@@ -454,12 +456,12 @@ export default function ChatInterface() {
             <button
               onClick={() => {
                 setShowCoachingSuggestion(false);
-                window.location.href = "/coaching";
+                setShowQuickPick(true);
               }}
               className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
             >
-              Explore programs
-              <ArrowRight size={12} />
+              Choose a program
+              <ChevronRight size={12} />
             </button>
             <button
               onClick={() => setShowCoachingSuggestion(false)}
@@ -539,6 +541,11 @@ export default function ChatInterface() {
             <JournalPromptModal onClose={() => setShowJournalPrompt(false)} />
           </div>
         </div>
+      )}
+
+      {/* Coaching Quick Pick Modal */}
+      {showQuickPick && (
+        <CoachingQuickPickModal onClose={() => setShowQuickPick(false)} />
       )}
 
       {/* Input Area */}

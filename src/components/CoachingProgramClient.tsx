@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, ChevronRight, Loader2, CheckCircle, MessageSquare } from "lucide-react";
+import { saveCoachingSession, type CoachingSessionSummary } from "@/lib/insights";
+import { COACHING_PROGRAMS } from "@/lib/coaching";
 
 // ── Types ──────────────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ export default function CoachingProgramClient({ programId, onClose }: CoachingPr
   const [scaleValue, setScaleValue] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -77,6 +80,7 @@ export default function CoachingProgramClient({ programId, onClose }: CoachingPr
         setSelectedOption(null);
         setScaleValue(null);
         setLocalError(null);
+        setStartedAt(Date.now());
         scrollToBottom();
       } catch (err) {
         setLocalError((err as Error).message || "Failed to start coaching session");
@@ -120,7 +124,7 @@ export default function CoachingProgramClient({ programId, onClose }: CoachingPr
 
       setState((prev) => {
         if (!prev) return prev;
-        return {
+        const next = {
           ...prev,
           stepIndex: data.stepIndex,
           isComplete: data.isComplete,
@@ -129,6 +133,30 @@ export default function CoachingProgramClient({ programId, onClose }: CoachingPr
           younaResponse: data.younaResponse,
           showYounaResponse: true,
         };
+
+        // Persist coaching session when complete
+        if (data.isComplete && next.stepIndex >= prev.totalSteps && startedAt !== null) {
+          const program = COACHING_PROGRAMS.find((p) => p.id === prev.programId);
+          if (program) {
+            try {
+              saveCoachingSession({
+                programId: prev.programId,
+                programName: program.name,
+                framework: program.framework,
+                startedAt: new Date(startedAt).toISOString(),
+                completedAt: new Date().toISOString(),
+                durationMinutes: Math.round((Date.now() - startedAt) / 60000),
+                stepsCompleted: prev.totalSteps,
+                totalSteps: prev.totalSteps,
+                isComplete: true,
+              });
+            } catch {
+              // silent fail
+            }
+          }
+        }
+
+        return next;
       });
 
       if (data.isComplete) {
