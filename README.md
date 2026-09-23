@@ -6,6 +6,8 @@ Youna is a companion, not a therapist, a diagnostic tool or a crisis service. It
 
 > **Status (23 Sep 2026): pre-release prototype, not deployed, no users.** Runs locally. The LLM path is built but off by default (`YOUNA_MOCK_MODE` defaults to mock). Nothing below is a measured outcome.
 
+**Architecture docs:** [full set](docs/README.md) · [system architecture](docs/01-system-architecture.md) · [AI and safety](docs/04-ai-and-safety.md) · [evaluation](docs/05-evaluation.md) · [decision log](docs/10-decision-log.md) · [gaps](docs/GAPS.md)
+
 ---
 
 ## What is built
@@ -80,4 +82,4 @@ Proprietary. All rights reserved. Source is public for review; not open to exter
 
 ---
 
-Ossama Mokhtar · Dubai, UAE · [Architecture and status](docs/00-architecture-and-status.md)
+Ossama Mokhtar · Dubai, UAE
