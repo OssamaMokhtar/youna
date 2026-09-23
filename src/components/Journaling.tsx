@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import CrisisResources from "./CrisisResources";
+import { isCrisisText } from "@/lib/safety";
 import { Calendar, TrendingUp, Clock, Check, Sparkles, AlertTriangle, Phone, Shield } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -78,6 +80,7 @@ export default function Journaling() {
   const [submitted, setSubmitted] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showReflection, setShowReflection] = useState(false);
+  const [showCrisis, setShowCrisis] = useState(false);
   const [streak, setStreak] = useState(0);
 
   useEffect(() => {
@@ -131,6 +134,9 @@ export default function Journaling() {
 
   const handleSubmit = () => {
     if (!content.trim()) return;
+    // Journals are where people write what they won't say out loud. Scan them.
+    const crisis = isCrisisText(content);
+    if (crisis) setShowCrisis(true);
     const now = new Date().toISOString();
     if (editingId) {
       setEntries((prev) =>
@@ -163,7 +169,8 @@ export default function Journaling() {
       setSelectedPrompt(null);
       setMood("");
       setEditingId(null);
-      setShowReflection(true);
+      // A generic "reflection" toast is the wrong reply to crisis language.
+      if (!crisis) setShowReflection(true);
     }, 800);
   };
 
@@ -375,7 +382,7 @@ export default function Journaling() {
           )}
         </div>
 
-        {/* AI Reflection toast */}
+        {/* Reflection toast (static text, not AI-generated) */}
         {showReflection && (
           <div className="bg-white rounded-2xl p-4 shadow-md border border-indigo-100 animate-fade-in">
             <div className="flex items-start gap-3">
@@ -453,6 +460,7 @@ export default function Journaling() {
           )}
         </div>
       </div>
+      {showCrisis && <CrisisResources onClose={() => setShowCrisis(false)} reason="chat" />}
     </div>
   );
 }

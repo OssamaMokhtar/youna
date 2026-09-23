@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus, Smile, Shield, MessageSquare, Sparkles, ChevronRight } from "lucide-react";
 import CrisisResources from "./CrisisResources";
+import { isCrisisText, CRISIS_REPLY } from "@/lib/safety";
 import { formatDisclaimer } from "@/lib/prompts";
 import { saveMoodCheckin, saveJournalEntry, type Mood } from "@/lib/insights";
 import CoachingQuickPickModal from "@/components/CoachingQuickPickModal";
@@ -34,24 +35,7 @@ interface ChatApiResponse {
 
 // ── Crisis keyword detection (client-side first gate) ──────────────────
 
-const CRISIS_KEYWORDS: RegExp[] = [
-  /\bsuic(id|de)\b/i,
-  /\bend my life\b/i,
-  /\bkill myself\b/i,
-  /\bwant to die\b/i,
-  /\bno reason to live\b/i,
-  /\bnothing matters\b/i,
-  /\bworthless\b/i,
-  /\bharm myself\b/i,
-  /\bcut myself\b/i,
-  /\bself harm\b/i,
-  /\bhurting myself\b/i,
-  /\bhave a plan\b/i,
-  /\bgoing to end it\b/i,
-  /\bplease help me\b/i,
-  /\bi can't go on\b/i,
-  /\bnobody cares\b/i,
-];
+// Crisis patterns live in src/lib/safety.ts (shared with the API route).
 
 const COUNSELING_INTENT: RegExp[] = [
   /\btherap(y|ist)\b/i,
@@ -88,7 +72,7 @@ const COACHING_INTENT: RegExp[] = [
 const MAX_HISTORY_MESSAGES = 12;
 
 function isCrisis(text: string): boolean {
-  return CRISIS_KEYWORDS.some((kw) => kw.test(text));
+  return isCrisisText(text);
 }
 
 function isCounselingRequest(text: string): boolean {
@@ -282,7 +266,7 @@ export default function ChatInterface() {
 
       const crisisResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I can hear how much pain you're in, and I'm really glad you're here. You don't have to go through this alone. Please take a moment to look through the resources I'm opening for you — trained people are available 24/7 who can help you through this. You matter, and there are people who want to support you.",
+        text: CRISIS_REPLY,
         sender: "youna",
         timestamp: new Date(),
       };

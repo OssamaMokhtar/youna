@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Calendar, TrendingUp, Clock, Check, Sparkles, AlertTriangle } from "lucide-react";
 import CrisisResources from "./CrisisResources";
+import { shouldOpenCrisisDialog } from "@/lib/safety";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -66,7 +67,6 @@ export default function MoodTracking() {
   const [submitted, setSubmitted] = useState(false);
   const [todayEntry, setTodayEntry] = useState<MoodEntry | null>(null);
   const [showCrisisDialog, setShowCrisisDialog] = useState(false);
-  const [lastTriggeredDate, setLastTriggeredDate] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadEntries();
@@ -103,16 +103,23 @@ export default function MoodTracking() {
   const handleSubmit = useCallback(() => {
     if (!selectedMood) return;
 
-    const recentEntries = entries.filter((e) => e.date >= weekAgoStr);
-    const avgMood =
-      recentEntries.length > 0
-        ? recentEntries.reduce((sum, e) => sum + moodScore(e.mood), 0) /
-          recentEntries.length
-        : 0;
+    const previousScores = entries
+      .filter((e) => e.date >= weekAgoStr && e.date !== today)
+      .map((e) => moodScore(e.mood));
 
-    if (avgMood <= 1.5 && moodScore(selectedMood) <= 2 && lastTriggeredDate !== today) {
+    // Crisis check (src/lib/safety.ts): average including today <= 1.5 and
+    // today <= 2 on the 1-5 scale, or crisis language in the note. No same-day
+    // suppression: a second, worse entry must still open the dialog.
+    if (
+      shouldOpenCrisisDialog({
+        todayScore: moodScore(selectedMood),
+        previousScores,
+        avgThreshold: 1.5,
+        todayMax: 2,
+        note,
+      })
+    ) {
       setShowCrisisDialog(true);
-      setLastTriggeredDate(today);
     }
 
     const newEntry: MoodEntry = {
@@ -133,9 +140,9 @@ export default function MoodTracking() {
       setShowForm(false);
       setSelectedMood("");
       setNote("");
-      setShowCrisisDialog(false);
+      // The crisis dialog stays open until the user closes it.
     }, 1200);
-  }, [selectedMood, note, today, entries, lastTriggeredDate]);
+  }, [selectedMood, note, today, entries]);
 
   const moodAvg =
     weekEntries.length > 0

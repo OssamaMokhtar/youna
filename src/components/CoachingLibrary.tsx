@@ -124,6 +124,9 @@ export default function CoachingLibrary() {
           Each program guides you through a focused exercise in a specific therapeutic framework — CBT, DBT, ACT, EFT, SFBT, or mindfulness.
           They're sequential: you move step by step, at your own pace, and Youna stays with you through each one.
         </p>
+        <p className="text-xs text-gray-400 mt-2 max-w-2xl">
+          These are self-guided skills exercises drawn from those frameworks. They are not therapy, diagnosis or treatment.
+        </p>
       </div>
 
       {/* Program grid */}

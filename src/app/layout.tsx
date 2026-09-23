@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Youna — AI Therapist, Wellness Coach & Companion",
+  title: "Youna — AI Wellness Companion",
   description: "Your AI-powered emotional wellness companion. Personalized conversations, mood tracking, journaling, and daily support — always available, always understanding.",
   icons: {
     icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>",
