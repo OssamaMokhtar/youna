@@ -328,6 +328,22 @@ export function saveCoachingSession(session: Omit<CoachingSessionSummary, "id">)
   return entry;
 }
 
+export function getRecentCoachingSessions(limit: number = 5): CoachingSessionSummary[] {
+  const sessions = loadCoachingSessions()
+    .filter((s) => s.isComplete)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  return sessions.slice(0, limit);
+}
+
+export function getMoodSourceBreakdown(): Record<string, number> {
+  const checkins = loadMoodCheckins();
+  const breakdown: Record<string, number> = { manual: 0, chat: 0, checkin: 0, journal: 0 };
+  for (const c of checkins) {
+    breakdown[c.source] = (breakdown[c.source] || 0) + 1;
+  }
+  return breakdown;
+}
+
 export function getCoachingStats(): {
   totalSessions: number;
   completedSessions: number;
@@ -370,11 +386,13 @@ export interface InsightsSummary {
   journalSentimentTrend: { date: string; sentiment: Sentiment; avgScore: number; count: number }[];
   latestJournalSentiment: { sentiment: Sentiment; score: number } | null;
   coachingStats: ReturnType<typeof getCoachingStats>;
+  recentSessions: CoachingSessionSummary[];
   personality: Record<string, unknown> | null;
   totalJournalEntries: number;
   totalMoodCheckins: number;
   dominantMood: Mood | null;
   recommendation: string | null;
+  moodSourceBreakdown: Record<string, number>;
 }
 
 export function getInsightsSummary(): InsightsSummary {
@@ -386,7 +404,7 @@ export function getInsightsSummary(): InsightsSummary {
   const latestJournalSentiment = getLatestJournalSentiment();
   const coachingStats = getCoachingStats();
   const personality = loadPersonality();
-  const journalEntries = loadJournalEntries();
+  const journalEntries = [...loadJournalEntries(), ...loadSavedJournalEntries()];
 
   // Dominant mood (most frequent in last 14 days)
   let dominantMood: Mood | null = null;
@@ -422,6 +440,8 @@ export function getInsightsSummary(): InsightsSummary {
     journalSentimentTrend,
     latestJournalSentiment,
     coachingStats,
+    recentSessions: getRecentCoachingSessions(5),
+    moodSourceBreakdown: getMoodSourceBreakdown(),
     personality,
     totalJournalEntries: journalEntries.length,
     totalMoodCheckins: loadMoodCheckins().length,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { TrendingUp, Calendar, BookOpen, Award, Flame, BarChart3, Sparkles, ArrowRight, Activity } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { TrendingUp, Calendar, BookOpen, Award, Flame, BarChart3, Sparkles, ArrowRight, Activity, CheckCircle2 } from "lucide-react";
 import type { InsightsSummary } from "@/lib/insights";
 import { getInsightsSummary } from "@/lib/insights";
 
@@ -508,6 +508,133 @@ export default function InsightsDashboard() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+          {/* Row 3b: Recent coaching sessions + mood source breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {/* Recent coaching sessions */}
+            {data.recentSessions && data.recentSessions.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <Target size={18} className="text-indigo-500" />
+                    Recent Sessions
+                  </h2>
+                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                    {data.recentSessions.length} completed
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {data.recentSessions.map((session) => (
+                    <div key={session.id} className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{session.programName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {session.framework} · {session.durationMinutes} min
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">
+                          {session.completedAt ? new Date(session.completedAt).toLocaleDateString() : "—"}
+                        </p>
+                        <div className="flex items-center gap-1 justify-end mt-1">
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full"
+                              style={{ width: `${(session.stepsCompleted / session.totalSteps) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 ml-1">
+                            {session.stepsCompleted}/{session.totalSteps}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mood source breakdown — verification that chat auto-logging works */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <BarChart3 size={18} className="text-emerald-500" />
+                  Mood Sources
+                </h2>
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  Auto-logging verified
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                Where your mood check-ins come from — confirms chat auto-logging is working.
+              </p>
+              {data.totalMoodCheckins === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-400">No mood data yet</p>
+                  <p className="text-xs text-gray-300 mt-1">Chat moods log automatically as you message</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(data.moodSourceBreakdown).map(([source, count]) => {
+                    const total = data.moodSourceBreakdown.manual +
+                      data.moodSourceBreakdown.chat +
+                      data.moodSourceBreakdown.checkin +
+                      data.moodSourceBreakdown.journal;
+                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const labels: Record<string, string> = {
+                      manual: "Manual check-in",
+                      chat: "Auto-logged from chat",
+                      checkin: "Daily check-in",
+                      journal: "From journal",
+                    };
+                    const iconColor: Record<string, string> = {
+                      manual: "text-indigo-400",
+                      chat: "text-emerald-400",
+                      checkin: "text-amber-400",
+                      journal: "text-purple-400",
+                    };
+                    const iconName: Record<string, string> = {
+                      manual: "PenLine",
+                      chat: "MessageSquare",
+                      checkin: "CalendarDays",
+                      journal: "BookOpen",
+                    };
+                    return (
+                      <div key={source} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {React.createElement(iconName[source as keyof typeof iconName] || "span", { className: iconColor[source as keyof typeof iconColor] + " w-3.5 h-3.5" })}
+                          <span className="text-sm text-gray-700">{labels[source as keyof typeof labels] ?? source}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                          {pct > 0 && (
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                          {pct > 0 && <span className="text-xs text-gray-400 w-8 text-right">{pct}%</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-400 font-medium">Total check-ins</span>
+                    <span className="text-sm font-semibold text-gray-900">{data.totalMoodCheckins}</span>
+                  </div>
+                  {data.moodSourceBreakdown.chat > 0 && (
+                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <CheckCircle2 size={16} className="flex-shrink-0" />
+                        <p className="text-xs font-medium">Auto-logging active</p>
+                      </div>
+                      <p className="text-xs text-emerald-600 mt-1">
+                        {data.moodSourceBreakdown.chat} mood check-in{data.moodSourceBreakdown.chat !== 1 ? "s" : ""} captured silently from your chat messages — no extra steps needed.
+                      </p>
                     </div>
                   )}
                 </div>

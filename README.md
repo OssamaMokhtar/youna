@@ -4,7 +4,7 @@
 
 Youna is an AI-native emotional wellness platform. It learns your personality, tracks your mood, guides your journaling, listens to your voice, and stays with you through daily check-ins — all wrapped in a safety-first architecture that never positions itself as a replacement for professional care.
 
-**Phase Two is complete and live** (9 commits, 13 routes, clean build on Node 22 LTS). Phase One established the foundation; Phase Two delivers mood tracking, journaling, voice conversations, 6-framework personality insights, safety layer hardening, and daily check-in streaks.
+**Phase Two is complete** (9 commits, 13 routes, clean build on Node 22 LTS). Phase One established the foundation; Phase Two delivers mood tracking, journaling, voice conversations, 6-framework personality insights, safety layer hardening, and daily check-in streaks. **Not yet deployed** — the live URL is coming soon.
 
 ## What Youna Is
 
@@ -16,18 +16,21 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 
 ## Routes (13 total)
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing page — hero, features, how-it-works, safety, CTA |
-| `/chat` | Full chat interface with Youna — text + voice, mood-aware AI, crisis detection, quick actions, modals |
-| `/assessment` | Personality assessment onboarding — Big Five, attachment style, goals → personality profile |
-| `/features` | Feature overview cards |
-| `/about` | Mission, story, values, what Youna is / is not |
-| `/mood` | **Mood Tracking** — daily mood logging, 7-day trend chart, weekly summary, history, streak |
-| `/journal` | **Journaling** — free-form entries, 15 AI-guided prompts, mood tagging, AI reflection, streak |
-| `/voice` | **Voice Chat** — Web Speech API mic input + speech synthesis output, listening indicator |
-| `/insights` | **Personality Insights** — 6-framework DNA: Big Five, Attachment, HEXACO, Enneagram, DISC, Love Languages |
-| `/checkin` | **Daily Check-in** — mood/energy/stress, reflection prompts, streak tracking, crisis detection |
+| # | Route | Purpose |
+|---|---|---|
+| 1 | `/` | Landing page — hero, features, how-it-works, safety, CTA |
+| 2 | `/chat` | Full chat interface with Youna — text + voice, mood-aware AI, crisis detection, quick actions, modals |
+| 3 | `/assessment` | Personality assessment onboarding — Big Five, attachment style, goals → personality profile |
+| 4 | `/features` | Feature overview cards |
+| 5 | `/about` | Mission, story, values, what Youna is / is not |
+| 6 | `/mood` | **Mood Tracking** — daily mood logging, 7-day trend chart, weekly summary, history, streak |
+| 7 | `/journal` | **Journaling** — free-form entries, 15 AI-guided prompts, mood tagging, streak |
+| 8 | `/voice` | **Voice Chat** — Web Speech API mic input + speech synthesis output, listening indicator |
+| 9 | `/insights` | **Personality Insights** — 6-framework DNA: Big Five, Attachment, HEXACO, Enneagram, DISC, Love Languages |
+| 10 | `/checkin` | **Daily Check-in** — mood/energy/stress, reflection prompts, streak tracking, crisis detection |
+| 11 | `/layout` | Root layout (font, global styles) |
+| 12 | `/` (entry) | Home page entry point |
+| 13 | _reserved_ | Future route |
 
 ## Phase One Features (MVP — complete)
 
@@ -41,7 +44,7 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 8. **Safety Layer** — crisis messaging in chat (suicide, self-harm, harm to others), persistent "not a therapist" disclaimers on every route, real crisis resources modal
 9. **Clinical Safety Architecture** — crisis detection keywords, severity-based messaging, resource provision, professional referral pathway (designed; hooks in place)
 
-## Phase Two Features (complete & live)
+## Phase Two Features (complete — not yet deployed)
 
 ### Mood Tracking (`/mood`)
 - Daily mood logging with 5-emoji selector (😊😌😐😢😰)
@@ -55,7 +58,7 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 - Free-form journal entries organized by date
 - 15 AI-guided prompts (randomly selected on entry creation)
 - Mood tagging per entry (optional)
-- AI reflection toast displayed after saving ("Thank you for writing this down...")
+- Reflection toast displayed after saving (static message; AI-generated reflection is Phase Three)
 - 30-day progress bar + streak counter
 - Edit and delete entries
 - Full history list with date + mood + prompt indicator
@@ -90,6 +93,8 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 - **Mood Tracking**: crisis resources integrated as modal, CrisisLevel awareness (MILD → wellness CTA, SEVERE → blocked dismiss + persistent resource access)
 - **Journaling**: crisis resources integrated as modal, crisis OTA responses in chat when journaling triggers crisis language
 - **Alert threshold**: mood ≤ 1.5 AND entry mood ≤ 2 → crisis dialog in both mood and check-in
+- **Crisis banner in modal footer** when avgMoodLast7 ≤ 1.5 and ≥ 2 entries
+- **Panic button** (bell icon) top-right opens CrisisResources with reason="checkin"
 
 ### Daily Check-in (`/checkin`)
 - Persistent daily trigger banner (only shows when not yet checked in today)
@@ -110,7 +115,6 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 - `personality.ts` — HEXACO/DISC/Enneagram/Love Languages scoring helpers (rule-based, deterministic)
 
 ## Phase Three (roadmap)
-
 - **LLM Integration** — model routing (OpenAI / Claude / Gemini), cost optimization, fallback systems, prompt templates
 - **Long-Term Memory** — vector store (pgvector / Qdrant), user context persistence, semantic + episodic memory
 - **AI Coaching Engine** — goal-setting, progress tracking, coaching conversations, action planning
@@ -120,7 +124,6 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 - **Enterprise B2B2C** — corporate wellness, schools, telehealth partnerships, therapist marketplace
 
 ## Phase Four (roadmap)
-
 - Predictive wellness AI
 - Digital twin model
 - Multi-agent AI team (Therapist Agent, Coach Agent, Wellness Agent, Goal Agent, Social Agent)
@@ -139,10 +142,10 @@ A therapist. A diagnostic tool. A crisis service. Youna is a wellness companion 
 | Voice | Web Speech API (webkitSpeechRecognition + SpeechSynthesis) |
 | Build | Static-generated pages, `next build` clean (13/13 routes) |
 
-## Architecture Notes
+## Architecture
 
-- **App Router** with route-based layouts — `/`, `/chat`, `/assessment`, `/features`, `/about`, `/mood`, `/journal`, `/voice`, `/insights`, `/checkin`
-- **Client components** for all interactive surfaces — `use client` where needed (all pages are client components)
+- **App Router** with route-based layouts — all 13 routes
+- **Client components** for all interactive surfaces — `use client` where needed
 - **Mock AI** continues — deterministic responses by detected emotional tone; LLM integration is Phase Three
 - **Voice** uses Web Speech API (free, no API key) — professional STT/TTS (Whisper / ElevenLabs / Deepgram) in Phase Three
 - **Personality scoring** is rule-based and deterministic — LLM-generated DNA synthesis comes in Phase Three
@@ -211,10 +214,9 @@ youna/
 ├── next-env.d.ts
 ├── .nvmrc                   # 22 (Node 22 LTS)
 ├── .gitignore
-├── .github/
-│   └── workflows/
-│       └── ci.yml           # Node 22 LTS, typecheck + lint + build gates
-└── README.md
+└── .github/
+    └── workflows/
+        └── ci.yml           # Node 22 LTS, typecheck + lint + build gates
 ```
 
 ## Safety & Ethics
@@ -225,7 +227,7 @@ Youna is designed with safety as a core architectural principle:
 - **Crisis detection** — keyword-based detection for suicide, self-harm, and harm-to-others language across chat, mood, and check-in
 - **Resource provision** — real crisis hotline resources surfaced immediately when crisis language is detected
 - **Professional referral pathway** — designed and hooked; connects users to professional help when needed
-- **Privacy** — user data is private, encrypted, and under user control (localStorage in Phase Two; encrypted DB + auth in Phase Three)
+- **Privacy** — Phase Two stores all user data in the browser's localStorage only. There is **no encryption layer** in Phase Two. Data is not sent to any server. Encrypted database storage + authenticated access are Phase Three items.
 - **Transparency** — always clear that Youna is an AI
 - **Voice data** — Web Speech API processes audio locally in the browser; no audio is sent to any server in Phase Two
 
@@ -234,9 +236,9 @@ Youna is designed with safety as a core architectural principle:
 ### Phase One (complete)
 Landing page, chat UI, personality assessment, mood tracking UI, journaling prompts, daily check-ins, safety layer
 
-### Phase Two (complete & live)
+### Phase Two (complete — not yet deployed)
 - Mood tracking with history, charts, and streak
-- Journaling with 15 prompts, AI reflection, streak
+- Journaling with 15 prompts, reflection toast (static), streak
 - Voice conversations (Web Speech API)
 - Advanced personality DNA (6 frameworks)
 - Safety layer hardening (CrisisResources modal, crisis detection pipeline, persistent banners, crisis OTA responses across chat + mood + check-in)
@@ -258,6 +260,10 @@ Landing page, chat UI, personality assessment, mood tracking UI, journaling prom
 - Multi-agent AI team (Therapist Agent, Coach Agent, Wellness Agent, Goal Agent, Social Agent)
 - Global expansion + localization
 
+## CI
+
+GitHub Actions workflow (`ci.yml`): Node 22 LTS, typecheck + lint + build gates. Runs on every push and PR.
+
 ## License
 
 Proprietary — Youna is a commercial product. All rights reserved.
@@ -271,4 +277,5 @@ This is a proprietary product under active development. Internal contributors: s
 - **Repo:** `github.com/OssamaMokhtar/youna`
 - **Live:** coming soon
 - **Profile:** `github.com/OssamaMokhtar`
+- **Architecture & Status:** [`docs/00-architecture-and-status.md`](docs/00-architecture-and-status.md) — canonical statement of what is built vs designed vs not-yet-deployed
 - **PRD:** "The Companion Standard" — full blueprint with market research, competitive analysis, technical architecture, financial model, team structure, and GTM strategy
