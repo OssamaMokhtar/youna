@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Calendar, TrendingUp, AlertTriangle, Sparkles, Check } from "lucide-react";
 import CrisisResources from "./CrisisResources";
+import { shouldOpenCrisisDialog } from "@/lib/safety";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -206,14 +207,22 @@ export default function DailyCheckIn() {
     if (!mood) return;
 
     const weekAgo = daysAgoStr(7);
-    const recentEntries = entries.filter((e) => e.date >= weekAgo);
-    const avgMood =
-      recentEntries.length > 0
-        ? recentEntries.reduce((sum, e) => sum + MOOD_SCORES[e.mood], 0) / recentEntries.length
-        : 0;
+    const previousScores = entries
+      .filter((e) => e.date >= weekAgo && e.date !== todayDate)
+      .map((e) => MOOD_SCORES[e.mood]);
 
-    // Crisis detection: avg mood <= 1.5 (between "bad" and "okay") AND today's mood is low
-    if (avgMood <= 1.5 && MOOD_SCORES[mood] <= 2 && streak.lastCheckedInDate !== todayDate) {
+    // Crisis check (src/lib/safety.ts): 7-day average INCLUDING today <= 1.5 and
+    // today <= 2 on the 0-4 scale, or crisis language in the note. There is no
+    // same-day suppression: the old guard compared against a streak date that
+    // was always today, so this dialog could never open.
+    const openCrisis = shouldOpenCrisisDialog({
+      todayScore: MOOD_SCORES[mood],
+      previousScores,
+      avgThreshold: 1.5,
+      todayMax: 2,
+      note,
+    });
+    if (openCrisis) {
       setShowCrisisDialog(true);
       setCrisisReason("checkin");
     }
@@ -243,9 +252,9 @@ export default function DailyCheckIn() {
       setEnergy(50);
       setStress(50);
       setNote("");
-      setShowCrisisDialog(false);
+      // The crisis dialog stays open until the user closes it.
     }, 1200);
-  }, [mood, energy, stress, note, entries, streak, todayDate]);
+  }, [mood, energy, stress, note, entries, todayDate]);
 
   // Computed stats for the last 7 days
   const weekAgo = daysAgoStr(7);

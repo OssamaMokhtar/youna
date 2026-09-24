@@ -59,7 +59,9 @@ export const MODELS: Record<ModelProvider, LLMChoice> = {
 
 export interface LLMConfig {
   provider: ModelProvider;
+  /** Legacy single key. Prefer apiKeys: each provider needs its own key. */
   apiKey?: string;
+  apiKeys?: Partial<Record<Exclude<ModelProvider, "mock">, string>>;
   fallbackProviders?: ModelProvider[];
   maxTokens?: number;
   temperature?: number;
@@ -133,6 +135,10 @@ export function setLLMConfig(c: Partial<LLMConfig>): void {
   config = { ...config, ...c };
 }
 
+function keyFor(provider: Exclude<ModelProvider, "mock">): string | undefined {
+  return config.apiKeys?.[provider] ?? (provider === config.provider ? config.apiKey : undefined);
+}
+
 export function getLLMConfig(): LLMConfig {
   return { ...config };
 }
@@ -192,7 +198,8 @@ async function completeOpenAI(
   userMessage: string
 ): Promise<LLMResponse> {
   const startTime = Date.now();
-  if (!config.apiKey) throw new Error("OpenAI API key not configured");
+  const apiKey = keyFor("openai");
+  if (!apiKey) throw new Error("OpenAI API key not configured");
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -202,7 +209,7 @@ async function completeOpenAI(
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: MODELS.openai.model,
       messages,
@@ -241,7 +248,8 @@ async function completeClaude(
   userMessage: string
 ): Promise<LLMResponse> {
   const startTime = Date.now();
-  if (!config.apiKey) throw new Error("Claude API key not configured");
+  const apiKey = keyFor("claude");
+  if (!apiKey) throw new Error("Claude API key not configured");
 
   const messages = [
     ...history.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
@@ -251,7 +259,8 @@ async function completeClaude(
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.apiKey}`,
+      // Anthropic uses x-api-key, not a Bearer token.
+      "x-api-key": apiKey,
       "Content-Type": "application/json",
       "anthropic-version": "2023-06-01",
     },
@@ -294,7 +303,8 @@ async function completeGemini(
   userMessage: string
 ): Promise<LLMResponse> {
   const startTime = Date.now();
-  if (!config.apiKey) throw new Error("Gemini API key not configured");
+  const apiKey = keyFor("gemini");
+  if (!apiKey) throw new Error("Gemini API key not configured");
 
   const messages: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [
     { role: "user", parts: [{ text: systemPrompt }] },
@@ -306,7 +316,7 @@ async function completeGemini(
   ];
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODELS.gemini.model}:generateContent?key=${config.apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODELS.gemini.model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

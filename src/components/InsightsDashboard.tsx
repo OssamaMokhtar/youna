@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { TrendingUp, Calendar, BookOpen, Award, Flame, BarChart3, Sparkles, ArrowRight, Activity, CheckCircle2 } from "lucide-react";
+import { TrendingUp, Calendar, BookOpen, Award, Flame, BarChart3, Sparkles, ArrowRight, Activity, CheckCircle2, Target } from "lucide-react";
 import type { InsightsSummary } from "@/lib/insights";
 import { getInsightsSummary } from "@/lib/insights";
 
@@ -513,6 +513,7 @@ export default function InsightsDashboard() {
                 </div>
               )}
             </div>
+          </div>
 
           {/* Row 3b: Recent coaching sessions + mood source breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

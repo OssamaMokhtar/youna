@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, ArrowRight, Loader2, Heart, AlertTriangle, BookOpen, Plus } from "lucide-react";
+import CrisisResources from "./CrisisResources";
+import { isCrisisText, CRISIS_REPLY } from "@/lib/safety";
 
 interface Message {
   id: string;
@@ -22,6 +24,7 @@ const initialMessages = [
 
 export default function ChatInterfaceV2() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [showCrisis, setShowCrisis] = useState(false);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -133,8 +136,13 @@ export default function ChatInterfaceV2() {
     setShowMoodCheck(false);
     setShowJournalPrompt(false);
 
+    // Safety gate: spoken or typed crisis language gets the deterministic
+    // crisis reply and the resources modal, never a canned mood response.
+    const crisis = isCrisisText(text);
+    if (crisis) setShowCrisis(true);
+
     setTimeout(() => {
-      const responseText = getResponse(text);
+      const responseText = crisis ? CRISIS_REPLY : getResponse(text);
       const response: Message = {
         id: (Date.now() + 1).toString(),
         text: responseText,
@@ -296,6 +304,7 @@ export default function ChatInterfaceV2() {
           </div>
         </div>
       </div>
+      {showCrisis && <CrisisResources onClose={() => setShowCrisis(false)} reason="chat" />}
     </div>
   );
 }
